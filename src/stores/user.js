@@ -28,6 +28,7 @@ export const useUserStore = defineStore('user', {
         },
         async logout() {
             this.user = null;
+            this.matches = null;
             this.avatar = null;
             await router.push('/login');
         },
@@ -57,6 +58,7 @@ export const useUserStore = defineStore('user', {
                 }
 
                 this.setUser(user);
+                this.setAvatar(user.photo);
                 await router.push('/');
                 return user;
             } catch (error) {
@@ -87,6 +89,45 @@ export const useUserStore = defineStore('user', {
             } catch (error) {
                 console.error('Error fetching recommendations:', error);
                 this.matches = [];
+            }
+        },
+        async updateUser(user) {
+            try {
+                const response = await fetch('/api/user', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(user)
+                })
+            } catch (error) {
+                throw error;
+            }
+        },
+        async uploadAvatar(file) {
+            if (this.user == null) {
+                return new Error('User not logged in');
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/api/photos/' + this.user.referenceId, {
+                    method: 'POST',
+                    headers: {},
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                this.setAvatar(data.url);
+                return data;
+            } catch (error) {
+                throw error;
             }
         }
     }
