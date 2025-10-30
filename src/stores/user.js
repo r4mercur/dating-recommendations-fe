@@ -26,6 +26,9 @@ export const useUserStore = defineStore('user', {
         removeMatch(id) {
             this.matches = this.matches.filter(match => match.id !== id);
         },
+        async register(username, email, password) {
+            // TODO: Call register endpoint and check missing inputs
+        },
         async logout() {
             this.user = null;
             this.matches = null;

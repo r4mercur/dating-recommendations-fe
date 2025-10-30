@@ -6,7 +6,12 @@ import Toast from "primevue/toast";
 import {Form} from "@primevue/forms";
 import InputText from "primevue/inputtext";
 import {router} from "@/router.js";
+import {useForm} from "@primevue/forms/useform";
+import {useUserStore} from "@/stores/user.js";
+import {useToast} from "primevue/usetoast";
 
+const userStore = useUserStore();
+const toast = useToast();
 
 const initValues = {
   username: '',
@@ -34,7 +39,16 @@ const resolver = ({ values }) => {
   };
 };
 
-const onFormSubmit = async ({ valid, values }) => {}
+const { values, meta, errors, handleSubmit } = useForm({ initialValues: initValues, resolver });
+
+const onFormSubmit = handleSubmit(async (values) => {
+  let email = values.originalEvent.states.email.value;
+  let username = values.originalEvent.states.username.value;
+  let password = values.originalEvent.states.username.value;
+
+  const user = await userStore.register(username, email, password);
+  toast.add({ severity: 'success', summary: 'Registered', detail: `Welcome ${user.name || user.email}!`, life: 3000 });
+});
 
 const toLogin = () => {
   router.push('/login');
