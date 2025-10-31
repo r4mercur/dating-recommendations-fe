@@ -1,6 +1,6 @@
 <script setup>
 import {computed, onMounted} from 'vue'
-import { useUserStore } from '@/stores/user'
+import {useUserStore} from '@/stores/user'
 import {useRecommendationsStore} from "@/stores/recommendation.js";
 
 const userStore = useUserStore()
@@ -145,7 +145,7 @@ onMounted(() => {
   margin: 0 auto;
   padding: 30px;
   gap: 30px;
-  min-height: calc(100vh - 60px);
+  min-height: calc(100vh - 200px);
 }
 
 .profile-sidebar {

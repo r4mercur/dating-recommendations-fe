@@ -50,7 +50,7 @@ const items = computed(() => {
 
 
 const isHomeActive = computed(() => {
-  return route.path === '/' || route.path === '/login';
+  return route.path === '/' || route.path === '/login' || route.path === '/registration';
 });
 
 const isLoggedId = computed(() => {
@@ -102,6 +102,11 @@ const avatarUrl = computed(() => {
           <div v-if="isLoggedId" class="flex items-center gap-2">
             <router-link to="/">
               <Avatar class="image" :image="avatarUrl" shape="circle" />
+            </router-link>
+          </div>
+          <div v-else class="flex items-center gap-2 big-icon-wrapper">
+            <router-link to="/login">
+              <i class="pi pi-sign-in big-icon"></i>
             </router-link>
           </div>
         </template>
@@ -369,5 +374,12 @@ const avatarUrl = computed(() => {
     flex: 0 0 15% !important;
     padding-right: 10px !important;
   }
+}
+.big-icon-wrapper {
+  width: 50px;
+}
+.big-icon {
+  color: var(--vt-c-text-dark-2);
+  font-size: 1.5rem !important;
 }
 </style>
