@@ -1,4 +1,4 @@
-import { defineStore } from "pinia";
+import {defineStore} from "pinia";
 import {router} from "@/router.js";
 
 export const useUserStore = defineStore('user', {
@@ -8,6 +8,7 @@ export const useUserStore = defineStore('user', {
             user: null,
             matches: null,
             avatar: null,
+            hasLoadedMatches: false
         }
     },
     actions: {
@@ -20,19 +21,47 @@ export const useUserStore = defineStore('user', {
         setMatches(matches) {
             this.matches = matches;
         },
+        setHasLoadedMatches(hasLoadedMatches) {
+            this.hasLoadedMatches = hasLoadedMatches;
+        },
         getMatches() {
             return this.matches;
         },
         removeMatch(id) {
             this.matches = this.matches.filter(match => match.id !== id);
         },
-        async register(username, email, password) {
-            // TODO: Call register endpoint and check missing inputs
+        async register(username, email, password, age, address, gender) {
+            try {
+                const user = {
+                    name: username,
+                    email: email,
+                    password: password,
+                    age: age,
+                    address: address,
+                    gender: gender,
+                    status: "ACTIVE"
+                };
+
+                const response = await fetch('/api/user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(user)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+            } catch (error) {
+                throw error;
+            }
         },
         async logout() {
             this.user = null;
             this.matches = null;
             this.avatar = null;
+            this.hasLoadedMatches = false;
             await router.push('/login');
         },
         async login(email, password) {

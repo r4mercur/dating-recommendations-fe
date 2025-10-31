@@ -1,8 +1,7 @@
 <script setup>
 import Menubar from 'primevue/menubar';
-import InputText from 'primevue/inputtext';
 import Avatar from 'primevue/avatar';
-import {computed, ref} from "vue";
+import {computed} from "vue";
 import {useRoute} from "vue-router";
 import {useUserStore} from "@/stores/user.js";
 
@@ -54,6 +53,10 @@ const isHomeActive = computed(() => {
   return route.path === '/' || route.path === '/login';
 });
 
+const isLoggedId = computed(() => {
+  return user.user !== null;
+});
+
 const avatarUrl = computed(() => {
   if (user.avatar) {
     return user.avatar
@@ -96,10 +99,10 @@ const avatarUrl = computed(() => {
           </router-link>
         </template>
         <template #end>
-          <div class="flex items-center gap-2">
-            <InputText placeholder="Search" type="text" class="w-32 sm:w-auto" />
-            <!-- TODO Replace with image from photo service -->
-            <Avatar class="image" :image="avatarUrl" shape="circle" />
+          <div v-if="isLoggedId" class="flex items-center gap-2">
+            <router-link to="/">
+              <Avatar class="image" :image="avatarUrl" shape="circle" />
+            </router-link>
           </div>
         </template>
       </Menubar>

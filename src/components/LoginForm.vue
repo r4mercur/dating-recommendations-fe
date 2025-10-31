@@ -1,14 +1,13 @@
 <script setup>
-import { useToast } from 'primevue/usetoast'
-import { Form } from '@primevue/forms'
+import {useToast} from 'primevue/usetoast'
+import {Form} from '@primevue/forms'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Toast from 'primevue/toast'
-import { useUserStore } from '@/stores/user.js'
-import { router } from '@/router.js'
+import {useUserStore} from '@/stores/user.js'
+import {router} from '@/router.js'
 import {useForm} from "@primevue/forms/useform";
-import {computed} from "vue";
 
 const userStore = useUserStore()
 const toast = useToast()
@@ -42,7 +41,7 @@ const toRegistration = () => router.push('/registration');
         <h2 class="mt-6 text-center text-3xl font-extrabold">Sign in to your account</h2>
       </div>
 
-      <div class="mt-2 py-4 px-6 shadow-lg rounded-lg">
+      <div class="mt-2 py-4 px-6 shadow-lg rounded-lg form-container">
         <Toast />
 
         <Form :resolver="resolver" @submit="onFormSubmit" class="space-y-6">
@@ -113,5 +112,9 @@ label {
 
 :deep(.p-message) {
   margin-top: 0.25rem;
+}
+.form-container {
+  max-width: 1000px;
+  margin: 0 auto;
 }
 </style>

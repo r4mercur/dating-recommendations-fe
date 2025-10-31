@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import {onMounted, ref} from 'vue'
 import ProfileTile from '@/components/ProfileTile.vue'
 import {useRecommendationsStore} from "@/stores/recommendation.js";
 import {useUserStore} from "@/stores/user.js";
@@ -87,15 +87,21 @@ const sampleMatches = [
   }
 ]
 
-onMounted(() => {
+onMounted(async () => {
   if (recommendationsStore && recommendationsStore.recommendations) {
     let payload = recommendationsStore.recommendations.recommendations;
-    userStore.getMatchesByRecommendations(payload);
+    const result = await userStore.getMatchesByRecommendations(payload);
+    matches.value = result ?? userStore.getMatches()
+  }
+
+  if (userStore.hasLoadedMatches) {
+    loading.value = false
+    return
   }
 
   setTimeout(() => {
-    matches.value = userStore.getMatches()
     loading.value = false
+    userStore.setHasLoadedMatches(true)
   }, 1500)
 })
 

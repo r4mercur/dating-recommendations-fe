@@ -64,7 +64,7 @@ const toLogin = () => {
           Create your account
         </h2>
       </div>
-      <div class="mt-2 py-4 px-6 shadow-lg rounded-lg">
+      <div class="mt-2 py-4 px-6 shadow-lg rounded-lg form-container">
         <Toast />
         <Form v-slot="$form" :initialValues="initValues" :resolver :validateOnValueUpdate="false" :validateOnBlur="true" @submit="onFormSubmit" class="space-y-6">
           <div class="space-y-2">
@@ -189,5 +189,9 @@ label {
 
 :deep(.p-message) {
   margin-top: 0.25rem;
+}
+.form-container {
+  max-width: 1000px;
+  margin: 0 auto;
 }
 </style>
