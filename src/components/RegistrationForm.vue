@@ -2,6 +2,7 @@
 
 import Message from "primevue/message";
 import Button from "primevue/button";
+import {Select} from "primevue";
 import Toast from "primevue/toast";
 import {Form} from "@primevue/forms";
 import InputText from "primevue/inputtext";
@@ -13,10 +14,27 @@ import {useToast} from "primevue/usetoast";
 const userStore = useUserStore();
 const toast = useToast();
 
-const initValues = {
-  username: '',
-  email: '',
-  password: ''
+const genders = [
+    {
+      'name': 'Male',
+      'value': 'MALE'
+    },
+    {
+      'name': 'Female',
+      'value': 'FEMALE'
+    },
+    {
+      'name': 'Divers',
+      'value': 'DIVERS'
+    }
+];
+
+const initValues ={
+    username: '',
+    email: '',
+    password: '',
+    age: 18,
+    gender: ''
 };
 
 const resolver = ({ values }) => {
@@ -34,6 +52,14 @@ const resolver = ({ values }) => {
     errors.password = [{ message: 'Password is required.' }];
   }
 
+  if (!values.age) {
+    errors.age = [{ message: 'Age is required.' }];
+  }
+
+  if (!values.gender) {
+    errors.gender = [{ message: 'Gender is required.' }];
+  }
+
   return {
     errors
   };
@@ -44,16 +70,18 @@ const { values, meta, errors, handleSubmit } = useForm({ initialValues: initValu
 const onFormSubmit = handleSubmit(async (values) => {
   let email = values.originalEvent.states.email.value;
   let username = values.originalEvent.states.username.value;
-  let password = values.originalEvent.states.username.value;
+  let password = values.originalEvent.states.password.value;
+  let age = values.originalEvent.states.age.value;
+  let gender = values.originalEvent.states.gender.value.value;
 
-  const user = await userStore.register(username, email, password);
+  const user = await userStore.register(username, email, password, age, gender);
   toast.add({ severity: 'success', summary: 'Registered', detail: `Welcome ${user.name || user.email}!`, life: 3000 });
 });
+
 
 const toLogin = () => {
   router.push('/login');
 };
-
 </script>
 
 <template>
@@ -68,12 +96,12 @@ const toLogin = () => {
         <Toast />
         <Form v-slot="$form" :initialValues="initValues" :resolver :validateOnValueUpdate="false" :validateOnBlur="true" @submit="onFormSubmit" class="space-y-6">
           <div class="space-y-2">
-            <label for="reg-username" class="block text-sm font-medium ">
+            <label for="username" class="block text-sm font-medium ">
               Username
             </label>
             <div class="mt-1">
               <InputText
-                  id="reg-username"
+                  id="username"
                   name="username"
                   type="text"
                   placeholder="Enter your username"
@@ -106,12 +134,12 @@ const toLogin = () => {
           </div>
 
           <div class="space-y-2">
-            <label for="reg-password" class="block text-sm font-medium ">
+            <label for="password" class="block text-sm font-medium ">
               Password
             </label>
             <div class="mt-1">
               <InputText
-                  id="reg-password"
+                  id="password"
                   name="password"
                   type="password"
                   placeholder="Enter your password"
@@ -123,6 +151,49 @@ const toLogin = () => {
               {{ $form.password?.error?.message }}
             </Message>
           </div>
+
+          <div class="space-y-2">
+            <label for="age" class="block text-sm font-medium ">
+              Age
+            </label>
+            <div class="mt-1">
+              <InputText
+                  id="age"
+                  name="age"
+                  type="number"
+                  placeholder="Enter your age"
+                  fluid
+                  class="w-full"
+              />
+            </div>
+            <Message v-if="$form.age?.invalid" severity="error" size="small" variant="simple" class="mt-1">
+              {{ $form.age?.error?.message }}
+            </Message>
+          </div>
+
+          <div class="space-y-2">
+            <label for="gender" class="block text-sm font-medium">
+              Gender
+            </label>
+            <Select
+                id="gender"
+                name="gender"
+                :options="genders"
+                optionLabel="name"
+                placeholder="Select a gender"
+                class="w-full"
+            />
+            <Message
+                v-if="$form.gender?.invalid"
+                severity="error"
+                size="small"
+                variant="simple"
+                class="mt-1"
+            >
+              {{ $form.gender?.error?.message }}
+            </Message>
+          </div>
+
 
           <div class="pt-4">
             <Button
