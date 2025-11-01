@@ -6,6 +6,8 @@ import {Select} from "primevue";
 import Toast from "primevue/toast";
 import {Form} from "@primevue/forms";
 import InputText from "primevue/inputtext";
+import InputGroup from "primevue/inputgroup";
+import InputGroupAddon from "primevue/inputgroupaddon";
 import {router} from "@/router.js";
 import {useForm} from "@primevue/forms/useform";
 import {useUserStore} from "@/stores/user.js";
@@ -34,7 +36,11 @@ const initValues ={
     email: '',
     password: '',
     age: 18,
-    gender: ''
+    gender: '',
+    street: '',
+    city: '',
+    zipCode: '',
+    country: ''
 };
 
 const resolver = ({ values }) => {
@@ -59,6 +65,18 @@ const resolver = ({ values }) => {
   if (!values.gender) {
     errors.gender = [{ message: 'Gender is required.' }];
   }
+  if (!values.street) {
+    errors.street = [{ message: 'Street is required.' }];
+  }
+  if (!values.city) {
+    errors.city = [{ message: 'City is required.' }];
+  }
+  if (!values.zipCode) {
+    errors.zipCode = [{ message: 'Zip code is required.' }];
+  }
+  if (!values.country) {
+    errors.country = [{ message: 'Country is required.' }];
+  }
 
   return {
     errors
@@ -72,9 +90,15 @@ const onFormSubmit = handleSubmit(async (values) => {
   let username = values.originalEvent.states.username.value;
   let password = values.originalEvent.states.password.value;
   let age = values.originalEvent.states.age.value;
+  let address = {
+        street: values.originalEvent.states.street.value,
+        city: values.originalEvent.states.city.value,
+        zipCode: values.originalEvent.states.zipCode.value,
+        country: values.originalEvent.states.country.value
+  };
   let gender = values.originalEvent.states.gender.value.value;
 
-  const user = await userStore.register(username, email, password, age, gender);
+  const user = await userStore.register(username, email, password, age, address, gender);
   toast.add({ severity: 'success', summary: 'Registered', detail: `Welcome ${user.name || user.email}!`, life: 3000 });
 });
 
@@ -194,6 +218,100 @@ const toLogin = () => {
             </Message>
           </div>
 
+          <div class="space-y-2">
+            <label class="block text-sm font-medium">Address</label>
+            <div class="address-container space-y-4">
+              <!-- Street Address -->
+              <div class="space-y-2">
+                <label for="street" class="block text-sm font-medium">
+                  Street & Number
+                </label>
+                <InputGroup>
+                  <InputGroupAddon>
+                    <i class="pi pi-home"></i>
+                  </InputGroupAddon>
+                  <InputText
+                      id="street"
+                      name="street"
+                      type="text"
+                      placeholder="Enter street and number"
+                      fluid
+                  />
+                </InputGroup>
+                <Message v-if="$form.street?.invalid" severity="error" size="small" variant="simple" class="mt-1">
+                  {{ $form.street?.error?.message }}
+                </Message>
+              </div>
+
+              <!-- Zip Code and City -->
+              <div class="grid grid-cols-2 gap-4 zip-city">
+                <div class="space-y-2">
+                  <label for="zipCode" class="block text-sm font-medium">
+                    Zip Code
+                  </label>
+                  <InputGroup>
+                    <InputGroupAddon>
+                      <i class="pi pi-hashtag"></i>
+                    </InputGroupAddon>
+                    <InputText
+                        id="zipCode"
+                        name="zipCode"
+                        type="text"
+                        placeholder="12345"
+                        fluid
+                    />
+                  </InputGroup>
+                  <Message v-if="$form.zipCode?.invalid" severity="error" size="small" variant="simple" class="mt-1">
+                    {{ $form.zipCode?.error?.message }}
+                  </Message>
+                </div>
+
+                <div class="space-y-2">
+                  <label for="city" class="block text-sm font-medium">
+                    City
+                  </label>
+                  <InputGroup>
+                    <InputGroupAddon>
+                      <i class="pi pi-building"></i>
+                    </InputGroupAddon>
+                    <InputText
+                        id="city"
+                        name="city"
+                        type="text"
+                        placeholder="Your city"
+                        fluid
+                    />
+                  </InputGroup>
+                  <Message v-if="$form.city?.invalid" severity="error" size="small" variant="simple" class="mt-1">
+                    {{ $form.city?.error?.message }}
+                  </Message>
+                </div>
+              </div>
+
+              <!-- Country -->
+              <div class="space-y-2">
+                <label for="country" class="block text-sm font-medium pt-2">
+                  Country
+                </label>
+                <InputGroup>
+                  <InputGroupAddon>
+                    <i class="pi pi-globe"></i>
+                  </InputGroupAddon>
+                  <InputText
+                      id="country"
+                      name="country"
+                      type="text"
+                      placeholder="Enter your country"
+                      fluid
+                  />
+                </InputGroup>
+                <Message v-if="$form.country?.invalid" severity="error" size="small" variant="simple" class="mt-1">
+                  {{ $form.country?.error?.message }}
+                </Message>
+              </div>
+            </div>
+          </div>
+
 
           <div class="pt-4">
             <Button
@@ -252,6 +370,11 @@ label {
   font-size: 0.875rem;
 }
 
+:deep(.p-inputgroupaddon) {
+  border: 1px solid #d1d5db;
+  border-right: none!important;
+}
+
 :deep(.p-inputtext:focus) {
   outline: none;
   border-color: #6366f1;
@@ -261,8 +384,25 @@ label {
 :deep(.p-message) {
   margin-top: 0.25rem;
 }
+
 .form-container {
   max-width: 1000px;
   margin: 0 auto;
+}
+
+.address-container {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--p-primary-color);
+}
+
+
+:deep(.p-inputgroup .p-inputtext) {
+  border-left: none;
+}
+
+.zip-city {
+  padding-left: 10px;
+  padding-top: 15px;
 }
 </style>
