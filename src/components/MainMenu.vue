@@ -33,6 +33,14 @@ const items = computed(() => {
           class: 'menu-item-matches'
         }
     );
+    baseItems.splice(2, 0,
+        {
+          label: 'Chats',
+          icon: 'pi pi-send',
+          to: '/messages',
+          class: 'menu-item-messages'
+        }
+    );
     baseItems.push(
         {
           label: 'Logout',
@@ -290,7 +298,7 @@ const avatarUrl = computed(() => {
   filter: drop-shadow(0 3px 6px rgba(229, 115, 115, 0.3)) !important;
 }
 
-.menu-item-profile.router-link-active {
+.menu-item-messages.router-link-active {
   background: linear-gradient(135deg, #ffb74d, #ffa726) !important;
   box-shadow: 0 5px 15px rgba(255, 183, 77, 0.4),
               0 2px 10px rgba(255, 183, 77, 0.3),
