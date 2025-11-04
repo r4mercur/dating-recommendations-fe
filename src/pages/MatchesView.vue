@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import ProfileTile from '@/components/ProfileTile.vue'
 import {useRecommendationsStore} from "@/stores/recommendation.js";
 import {useUserStore} from "@/stores/user.js";
@@ -7,92 +7,31 @@ import {useUserStore} from "@/stores/user.js";
 const recommendationsStore = useRecommendationsStore();
 const userStore = useUserStore();
 
-
-const matches = ref([])
+const rawMatches = ref([])
 const loading = ref(true)
 
-// sample data
-const sampleMatches = [
-  {
-    id: 1,
-    name: 'Sarah Müller',
-    age: 26,
-    location: 'Berlin',
-    bio: 'Liebeskochende Fotografin mit einer Leidenschaft für Reisen und gute Musik. Immer auf der Suche nach neuen Abenteuern!',
-    avatar: '/src/assets/avatar.jpg',
-    interests: ['Fotografie', 'Kochen', 'Reisen', 'Musik', 'Yoga', 'Kino'],
-    distance: 2.5,
-    compatibility: 94,
-    isOnline: true
-  },
-  {
-    id: 2,
-    name: 'Emma Schmidt',
-    age: 24,
-    location: 'Hamburg',
-    bio: 'Yoga-Lehrerin und Naturliebhaberin. Ich liebe es, neue Orte zu erkunden und authentische Menschen kennenzulernen.',
-    avatar: '/src/assets/avatar.jpg',
-    interests: ['Yoga', 'Natur', 'Meditation', 'Wandern'],
-    distance: 15.2,
-    compatibility: 87,
-    isOnline: false
-  },
-  {
-    id: 3,
-    name: 'Lisa Wagner',
-    age: 29,
-    location: 'München',
-    bio: 'Kunstliebhaberin und Designerin. Wenn ich nicht gerade an kreativen Projekten arbeite, erkunde ich die Stadt.',
-    avatar: '/src/assets/avatar.jpg',
-    interests: ['Design', 'Kunst', 'Kaffee', 'Architektur', 'Kultur'],
-    distance: 8.7,
-    compatibility: 91,
-    isOnline: true
-  },
-  {
-    id: 4,
-    name: 'Anna Becker',
-    age: 27,
-    location: 'Köln',
-    bio: 'Musikerin und Buchliebhaberin. Auf der Suche nach jemanden, der meine Leidenschaft für Live-Musik teilt.',
-    avatar: '/src/assets/avatar.jpg',
-    interests: ['Musik', 'Bücher', 'Konzerte', 'Gitarre'],
-    distance: 12.3,
-    compatibility: 89,
-    isOnline: false
-  },
-  {
-    id: 5,
-    name: 'Julia Fischer',
-    age: 25,
-    location: 'Frankfurt',
-    bio: 'Sportbegeisterte Weltenbummlerin. Immer bereit für spontane Abenteuer und tiefe Gespräche bei einem guten Wein.',
-    avatar: '/src/assets/avatar.jpg',
-    interests: ['Sport', 'Reisen', 'Wein', 'Fitness', 'Abenteuer'],
-    distance: 5.1,
-    compatibility: 92,
-    isOnline: true
-  },
-  {
-    id: 6,
-    name: 'Sophie Klein',
-    age: 28,
-    location: 'Stuttgart',
-    bio: 'Technikbegeisterte mit einem Herz für Tiere. Entwicklerin bei Tag, Tierfreundin bei Nacht.',
-    avatar: '/src/assets/avatar.jpg',
-    interests: ['Technologie', 'Tiere', 'Gaming', 'Programmieren'],
-    distance: 18.9,
-    compatibility: 85,
-    isOnline: false
+const matches = computed(() => {
+  if (!rawMatches.value || rawMatches.value.length === 0) {
+    return [];
   }
-]
+
+  if (userStore.contacts && userStore.contacts.length > 0) {
+    const contactedIds = userStore.contacts.map(contact => contact.contactUser.referenceId);
+    return rawMatches.value.filter(match => !contactedIds.includes(match.referenceId));
+  }
+
+  return rawMatches.value;
+});
 
 onMounted(async () => {
+  if (userStore.user?.referenceId && userStore.contacts == null) {
+    await userStore.getContactsForUser(userStore.user.referenceId);
+  }
+
   if (recommendationsStore && recommendationsStore.recommendations) {
     let payload = recommendationsStore.recommendations.recommendations;
     const result = await userStore.getMatchesByRecommendations(payload);
-    matches.value = result ?? userStore.getMatches();
-    await userStore.getContactsForUser(userStore.user.referenceId);
+    rawMatches.value = result ?? userStore.getMatches();
   }
 
   if (userStore.hasLoadedMatches) {
@@ -117,10 +56,9 @@ const handleLike = (profile) => {
 }
 
 const handlePass = (profile) => {
-  console.log('Passed profile:', profile)
-  // here send pass to a specific api endpoint
-  // and remove the user from the matches list
-  matches.value = matches.value.filter(match => match.id !== profile.id)
+  console.log('Passed profile:', profile);
+  rawMatches.value = rawMatches.value.filter(match => match.id !== profile.id);
+  userStore.sendRejection(profile.referenceId);
   userStore.removeMatch(profile.id);
 }
 </script>

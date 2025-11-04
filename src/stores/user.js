@@ -62,7 +62,25 @@ export const useUserStore = defineStore('user', {
                 this.contacts.push(contact);
             }
         },
-        getMatches() {
+        async getMatches() {
+            if (!this.contacts && this.user?.referenceId) {
+                try {
+                    await this.getContactsForUser(this.user.referenceId);
+                } catch (error) {
+                    console.error('Error loading contacts:', error);
+                    this.contacts = [];
+                }
+            }
+
+            if (!this.matches) {
+                return null;
+            }
+
+            if (this.contacts && this.contacts.length > 0) {
+                const contactedIds = this.contacts.map(contact => contact.contactReferenceId);
+                return this.matches.filter(match => !contactedIds.includes(match.referenceId));
+            }
+
             return this.matches;
         },
         removeMatch(id) {
@@ -99,6 +117,7 @@ export const useUserStore = defineStore('user', {
             this.user = null;
             this.matches = null;
             this.avatar = null;
+            this.contacts = null;
             this.hasLoadedMatches = false;
             await router.push('/login');
         },
@@ -240,6 +259,31 @@ export const useUserStore = defineStore('user', {
                 return data;
             } catch (e) {
                 throw e;
+            }
+        },
+        async sendRejection(referenceId) {
+            try {
+                const response = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userReferenceId: this.user.referenceId,
+                        contactReferenceId: referenceId,
+                        status: "REJECTED"
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                this.setUserContacts(data);
+                return data;
+            } catch (error) {
+                throw error;
             }
         }
     }
