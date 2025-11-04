@@ -54,6 +54,14 @@ export const useUserStore = defineStore('user', {
         setHasLoadedMatches(hasLoadedMatches) {
             this.hasLoadedMatches = hasLoadedMatches;
         },
+        setUserContacts(contact) {
+            if (this.contacts == null) {
+                this.contacts = [];
+                this.contacts.push(contact);
+            } else {
+                this.contacts.push(contact);
+            }
+        },
         getMatches() {
             return this.matches;
         },
@@ -190,6 +198,48 @@ export const useUserStore = defineStore('user', {
                 return data;
             } catch (error) {
                 throw error;
+            }
+        },
+        async sendLike(referenceId) {
+            try {
+                const response = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userReferenceId: this.user.referenceId,
+                        contactReferenceId: referenceId,
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                this.setUserContacts(data);
+                return data;
+            } catch (error) {
+                throw error;
+            }
+        },
+        async getContactsForUser(userId) {
+            try {
+                const response = await fetch('/api/contact/' + userId, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                this.setUserContacts(data);
+                return data;
+            } catch (e) {
+                throw e;
             }
         }
     }

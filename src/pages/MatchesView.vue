@@ -91,7 +91,8 @@ onMounted(async () => {
   if (recommendationsStore && recommendationsStore.recommendations) {
     let payload = recommendationsStore.recommendations.recommendations;
     const result = await userStore.getMatchesByRecommendations(payload);
-    matches.value = result ?? userStore.getMatches()
+    matches.value = result ?? userStore.getMatches();
+    await userStore.getContactsForUser(userStore.user.referenceId);
   }
 
   if (userStore.hasLoadedMatches) {
@@ -112,8 +113,7 @@ const handleViewProfile = (profile) => {
 
 const handleLike = (profile) => {
   console.log('Liked profile:', profile)
-  // here send like to a specific api endpoint
-  // and remove the user from the matches list
+  userStore.sendLike(profile.referenceId);
 }
 
 const handlePass = (profile) => {
