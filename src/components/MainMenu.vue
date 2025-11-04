@@ -85,14 +85,30 @@ const avatarUrl = computed(() => {
           </router-link>
         </template>
         <template #item="{ item, props, hasSubmenu, root }">
+          <a
+              v-if="item.command"
+              v-bind="props.action"
+              @click="item.command"
+              class="p-menubar-item-link menu-item-link menu-item-logout"
+              :class="[item.class]"
+              tabindex="-1"
+              style="cursor: pointer;"
+          >
+            <div class="menu-item-content">
+              <i v-if="item.icon" :class="[item.icon, 'menu-item-icon']"></i>
+              <span v-if="item.label" class="menu-item-label">{{ item.label }}</span>
+            </div>
+          </a>
           <router-link
+              v-else
               :to="item.to"
               v-bind="props.action"
-              class="menu-item-link"
+              class="p-menubar-item-link menu-item-link"
               :class="{
                 'router-link-active': item.to === '/' ? isHomeActive : route.path === item.to,
                 [item.class]: true
               }"
+              tabindex="-1"
           >
             <div class="menu-item-content">
               <i v-if="item.icon" :class="[item.icon, 'menu-item-icon']"></i>
@@ -189,7 +205,8 @@ const avatarUrl = computed(() => {
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2)) !important;
 }
 
-.menu-item-link.router-link-active {
+.menu-item-link.router-link-active,
+.menu-item-logout {
   background: linear-gradient(135deg, #667eea, #764ba2) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
   box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4),
