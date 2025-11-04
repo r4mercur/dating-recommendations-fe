@@ -6,6 +6,7 @@ import LoginForm from "@/components/LoginForm.vue";
 import MatchesView from "@/pages/MatchesView.vue";
 import RegistrationForm from "@/components/RegistrationForm.vue";
 import {useUserStore} from "@/stores/user.js";
+import ChatView from "@/pages/ChatView.vue";
 
 const routes = [
     { path: "/", component: HomeView },
@@ -13,6 +14,7 @@ const routes = [
     { path: "/login", component: LoginForm },
     { path: "/registration", component: RegistrationForm },
     { path: '/matches', component: MatchesView, meta: { requiresAuth: true} },
+    { path: '/messages', component: ChatView, meta: { requiresAuth: true} },
 ];
 
 export const router = createRouter({
