@@ -33,6 +33,7 @@ export const useUserStore = defineStore('user', {
         return {
             user: null,
             matches: null,
+            contacts: null,
             avatar: null,
             hasLoadedMatches: false
         }

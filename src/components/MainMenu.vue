@@ -80,7 +80,9 @@ const avatarUrl = computed(() => {
     <div class="card">
       <Menubar :model="items">
         <template #start>
-          <img :src="LogoIcon" alt="Logo" class="logo" />
+          <router-link to="/">
+            <img :src="LogoIcon" alt="Logo" class="logo" />
+          </router-link>
         </template>
         <template #item="{ item, props, hasSubmenu, root }">
           <router-link
