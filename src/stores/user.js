@@ -2,7 +2,33 @@ import {defineStore} from "pinia";
 import {router} from "@/router.js";
 
 export const useUserStore = defineStore('user', {
-    persist: true,
+    persist: {
+        storage: {
+            getItem: (key) => {
+                const raw = localStorage.getItem(key);
+                if (!raw) return null;
+
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (parsed._expires && Date.now() > parsed._expires) {
+                        localStorage.removeItem(key);
+                        return null;
+                    }
+                    return JSON.stringify(parsed.value);
+                } catch (e) {
+                    return raw;
+                }
+            },
+            setItem: (key, value) => {
+                const payload = {
+                    value: JSON.parse(value),
+                    _expires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+                };
+                localStorage.setItem(key, JSON.stringify(payload));
+            },
+            removeItem: (key) => localStorage.removeItem(key)
+        }
+    },
     state: () => {
         return {
             user: null,
@@ -16,6 +42,9 @@ export const useUserStore = defineStore('user', {
             this.user = user;
         },
         setAvatar(avatar) {
+            if (avatar != null && avatar === "https://example.com/photo.jpg") {
+                avatar = "/src/assets/avatar.jpg";
+            }
             this.avatar = avatar;
         },
         setMatches(matches) {
