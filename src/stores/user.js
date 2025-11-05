@@ -55,11 +55,13 @@ export const useUserStore = defineStore('user', {
             this.hasLoadedMatches = hasLoadedMatches;
         },
         setUserContacts(contact) {
-            if (this.contacts == null) {
+            if (this.contacts == null && contact.length > 0) {
                 this.contacts = [];
                 this.contacts.push(contact);
             } else {
-                this.contacts.push(contact);
+                if (contact.length > 0) {
+                    this.contacts.push(contact);
+                }
             }
         },
         async getMatches() {
