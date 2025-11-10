@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue'
-import { useChatStore } from '@/stores/chat.js'
+import {computed} from 'vue'
+import {useChatStore} from '@/stores/chat.js'
 
 defineProps({
   selectedChatId: {
@@ -9,7 +9,7 @@ defineProps({
   }
 })
 
-const emit = defineEmits(['chat-selected'])
+const emit = defineEmits(['chat-selected', 'new-chat'])
 
 const chatStore = useChatStore()
 
@@ -50,6 +50,10 @@ const selectChat = (chat) => {
   emit('chat-selected', chat)
 }
 
+const createNewChat = () => {
+  emit('new-chat');
+}
+
 const formatTime = (timestamp) => {
   const now = new Date()
   const diff = now - timestamp
@@ -66,7 +70,7 @@ const formatTime = (timestamp) => {
   <div class="chat-menu">
     <div class="chat-menu-header">
       <h2>Chats</h2>
-      <button class="new-chat-button">
+      <button @click="createNewChat" class="new-chat-button">
         <i class="pi pi-plus"></i>
       </button>
     </div>

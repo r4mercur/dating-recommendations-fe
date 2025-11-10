@@ -64,7 +64,7 @@ const toRegistration = () => router.push('/registration');
 
         <div class="mt-6 text-center">
           <span class="text-sm">Don't have an account? </span>
-          <Button label="Register here" link @click="toRegistration" class="text-sm font-medium text-indigo-600 hover:text-indigo-500" />
+          <Button label="Register here" link @click="toRegistration" class="text-sm font-medium" />
         </div>
       </div>
     </div>

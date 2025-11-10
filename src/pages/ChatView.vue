@@ -1,12 +1,20 @@
 <script setup>
-import { ref } from 'vue'
+import {ref} from 'vue'
 import ChatMenu from '@/components/ChatMenu.vue'
 import Chat from '@/components/Chat.vue'
+import ChatModal from "@/components/modal/ChatModal.vue";
 
 const selectedChat = ref(null)
+const showNewChatModal = ref(false)
 
 const handleChatSelected = (chat) => {
   selectedChat.value = chat
+}
+const handleNewChat = () => {
+  selectedChat.value = null
+
+  // show new chat modal
+  showNewChatModal.value = true
 }
 </script>
 
@@ -16,12 +24,15 @@ const handleChatSelected = (chat) => {
       <ChatMenu
         :selectedChatId="selectedChat?.id"
         @chat-selected="handleChatSelected"
+        @new-chat="handleNewChat"
       />
     </div>
 
     <div class="chat-content">
       <Chat :selectedChat="selectedChat" />
     </div>
+
+    <ChatModal v-if="showNewChatModal" @close="showNewChatModal = false" />
   </div>
 </template>
 

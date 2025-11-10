@@ -329,7 +329,7 @@ const toLogin = () => {
               label="Sign in here"
               link
               @click="toLogin"
-              class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+              class="text-sm font-medium"
           />
         </div>
       </div>
