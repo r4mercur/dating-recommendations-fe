@@ -13,7 +13,7 @@ export const useRecommendationsStore = defineStore('recommendations', {
         },
         async getRecommendations(userId) {
             try {
-                const response = await fetch('/users/recommendations/' + userId);
+                const response = await fetch('/api/recommendations/' + userId);
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
