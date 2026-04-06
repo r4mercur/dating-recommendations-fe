@@ -3,6 +3,7 @@
 import Message from "primevue/message";
 import Button from "primevue/button";
 import {Select} from "primevue";
+import MultiSelect from "primevue/multiselect";
 import Toast from "primevue/toast";
 import {Form} from "@primevue/forms";
 import InputText from "primevue/inputtext";
@@ -12,6 +13,7 @@ import {router} from "@/router.js";
 import {useForm} from "@primevue/forms/useform";
 import {useUserStore} from "@/stores/user.js";
 import {useToast} from "primevue/usetoast";
+import {ref} from "vue";
 
 const userStore = useUserStore();
 const toast = useToast();
@@ -31,12 +33,46 @@ const genders = [
     }
 ];
 
+const hobbies = ref([
+    {name: 'Reading', value: 'READING'},
+    {name: 'Writing', value: 'WRITING'},
+    {name: 'Coding', value: 'CODING'},
+    {name: 'Playing Video Games', value: 'PLAYING_VIDEO_GAMES'},
+    {name: 'Watching Movies', value: 'WATCHING_MOVIES'},
+    {name: 'Playing Music', value: 'PLAYING_MUSIC'},
+    {name: 'Hiking', value: 'HIKING'},
+    {name: 'Swimming', value: 'SWIMMING'},
+    {name: 'Cycling', value: 'CYCLING'},
+    {name: 'Sports', value: 'SPORTS'},
+    {name: 'Traveling', value: 'TRAVELING'},
+    {name: 'Cooking', value: 'COOKING'},
+    {name: 'Gardening', value: 'GARDENING'},
+    {name: 'Photography', value: 'PHOTOGRAPHY'},
+    {name: 'Art', value: 'ART'},
+]);
+
+const interests = ref([
+    {name: 'Sports', value: 'SPORTS'},
+    {name: 'Music', value: 'MUSIC'},
+    {name: 'Movies', value: 'MOVIES'},
+    {name: 'Books', value: 'BOOKS'},
+    {name: 'Technology', value: 'TECHNOLOGY'},
+    {name: 'Travel', value: 'TRAVEL'},
+    {name: 'Food', value: 'FOOD'},
+    {name: 'Fashion', value: 'FASHION'},
+    {name: 'Gaming', value: 'GAMING'},
+    {name: 'DIY', value: 'DIY'},
+    {name: 'Crafts', value: 'CRAFTS'},
+])
+
 const initValues ={
     username: '',
     email: '',
     password: '',
     age: 18,
     gender: '',
+    hobbies: [],
+    interests: [],
     street: '',
     city: '',
     zipCode: '',
@@ -97,8 +133,19 @@ const onFormSubmit = handleSubmit(async (values) => {
         country: values.originalEvent.states.country.value
   };
   let gender = values.originalEvent.states.gender.value.value;
+  let selectedHobbies = (values.originalEvent.states.hobbies.value || []).map((hobby) => hobby.value);
+  let selectedInterests = (values.originalEvent.states.interests.value || []).map((interest) => interest.value);
 
-  const user = await userStore.register(username, email, password, age, address, gender);
+  const user = await userStore.register(
+      username,
+      email,
+      password,
+      age,
+      address,
+      gender,
+      selectedHobbies,
+      selectedInterests
+  );
   toast.add({ severity: 'success', summary: 'Registered', detail: `Welcome ${user.name || user.email}!`, life: 3000 });
 });
 
@@ -216,6 +263,38 @@ const toLogin = () => {
             >
               {{ $form.gender?.error?.message }}
             </Message>
+          </div>
+
+          <div class="space-y-2">
+            <label for="hobbies" class="block text-sm font-medium">
+              Hobbies
+            </label>
+            <MultiSelect
+                id="hobbies"
+                name="hobbies"
+                :options="hobbies"
+                optionLabel="name"
+                placeholder="Select your hobbies"
+                display="chip"
+                :maxSelectedLabels="4"
+                class="w-full"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="interests" class="block text-sm font-medium">
+              Interests
+            </label>
+            <MultiSelect
+                id="interests"
+                name="interests"
+                :options="interests"
+                optionLabel="name"
+                placeholder="Select your interests"
+                display="chip"
+                :maxSelectedLabels="4"
+                class="w-full"
+            />
           </div>
 
           <div class="space-y-2">
@@ -350,6 +429,10 @@ const toLogin = () => {
   width: 100% !important;
   display: block;
   margin-bottom: 0.5rem;
+}
+
+:deep(.p-multiselect) {
+  width: 100%;
 }
 
 :deep(.p-button) {

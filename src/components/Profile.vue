@@ -1,11 +1,13 @@
 <script setup>
-import {computed, onMounted} from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import {useUserStore} from '@/stores/user'
 import {useRecommendationsStore} from "@/stores/recommendation.js";
+import ProfileUploadModal from "@/components/modal/ProfileUploadModal.vue";
 
 const userStore = useUserStore()
 const recommendationsStore = useRecommendationsStore();
 
+const showUploadModal = ref(false)
 
 const user = computed(() => userStore.user)
 const avatar = computed(() => userStore.avatar)
@@ -30,6 +32,10 @@ const formatDate = (dateString) => {
     month: 'long',
     day: 'numeric'
   })
+}
+
+function onAvatarUploaded() {
+  showUploadModal.value = false
 }
 
 // load recommendations initial after login
@@ -78,9 +84,10 @@ onMounted(() => {
     <div class="profile-content">
       <div class="profile-header">
         <h2>About me</h2>
-        <button class="edit-button">
-          <i class="pi pi-pencil"></i>
-          Edit profile
+
+        <button class="edit-button" @click="showUploadModal = true">
+          <i class="pi pi-camera"></i>
+          Profilbild ändern
         </button>
       </div>
 
@@ -136,6 +143,12 @@ onMounted(() => {
       </div>
     </div>
   </div>
+
+  <ProfileUploadModal
+      v-if="showUploadModal"
+      @close="showUploadModal = false"
+      @uploaded="onAvatarUploaded"
+  />
 </template>
 
 <style scoped>
