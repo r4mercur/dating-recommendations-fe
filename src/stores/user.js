@@ -88,7 +88,7 @@ export const useUserStore = defineStore('user', {
         removeMatch(id) {
             this.matches = this.matches.filter(match => match.id !== id);
         },
-        async register(username, email, password, age, address, gender) {
+        async register(username, email, password, age, address, gender, hobbies, interests) {
             try {
                 const user = {
                     name: username,
@@ -97,7 +97,9 @@ export const useUserStore = defineStore('user', {
                     age: age,
                     address: address,
                     gender: gender,
-                    status: "ACTIVE"
+                    status: "ACTIVE",
+                    hobbies: hobbies,
+                    interests: interests,
                 };
 
                 const response = await fetch('/api/user', {
@@ -111,6 +113,8 @@ export const useUserStore = defineStore('user', {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
+
+                return await response.json();
             } catch (error) {
                 throw error;
             }

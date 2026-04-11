@@ -13,19 +13,19 @@
   },
   "dependencies": {
     "@primeuix/themes": "^2.0.3",
-    "@primevue/forms": "^4.5.4",
+    "@primevue/forms": "^4.5.5",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "primeflex": "^4.0.0",
     "primeicons": "^7.0.0",
-    "primevue": "^4.5.4",
-    "vue": "^3.5.27",
-    "vue-router": "^5.0.2",
+    "primevue": "^4.5.5",
+    "vue": "^3.5.32",
+    "vue-router": "^5.0.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.4",
-    "vite": "^7.3.1",
-    "vite-plugin-vue-devtools": "^8.0.6"
+    "@vitejs/plugin-vue": "^6.0.5",
+    "vite": "^8.0.8",
+    "vite-plugin-vue-devtools": "^8.1.1"
   }
 }
