@@ -164,6 +164,12 @@ const avatarUrl = computed(() => {
   gap: 10px;
 }
 
+:deep(.p-menubar-item:not(.p-disabled) > .p-menubar-item-content:hover),
+:deep(.p-menubar-item:not(.p-disabled) > .p-menubar-item-content:hover .p-menubar-item-link) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
 .menu-item-link {
   display: flex !important;
   align-items: center !important;
@@ -196,13 +202,8 @@ const avatarUrl = computed(() => {
 }
 
 .menu-item-link:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3),
-              0 4px 15px rgba(0, 0, 0, 0.2),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2)) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: none !important;
 }
 
 .menu-item-link.router-link-active,
@@ -212,7 +213,6 @@ const avatarUrl = computed(() => {
   box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4),
               0 2px 10px rgba(102, 126, 234, 0.3),
               inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-  filter: drop-shadow(0 3px 6px rgba(102, 126, 234, 0.3)) !important;
 }
 
 .menu-item-content {
@@ -290,7 +290,6 @@ const avatarUrl = computed(() => {
   box-shadow: 0 5px 15px rgba(79, 195, 247, 0.4),
               0 2px 10px rgba(79, 195, 247, 0.3),
               inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-  filter: drop-shadow(0 3px 6px rgba(79, 195, 247, 0.3)) !important;
 }
 
 .menu-item-about.router-link-active {
@@ -298,7 +297,6 @@ const avatarUrl = computed(() => {
   box-shadow: 0 5px 15px rgba(129, 199, 132, 0.4),
               0 2px 10px rgba(129, 199, 132, 0.3),
               inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-  filter: drop-shadow(0 3px 6px rgba(129, 199, 132, 0.3)) !important;
 }
 
 .menu-item-matches.router-link-active {
@@ -306,7 +304,6 @@ const avatarUrl = computed(() => {
   box-shadow: 0 5px 15px rgba(229, 115, 115, 0.4),
               0 2px 10px rgba(229, 115, 115, 0.3),
               inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-  filter: drop-shadow(0 3px 6px rgba(229, 115, 115, 0.3)) !important;
 }
 
 .menu-item-messages.router-link-active {
@@ -314,7 +311,6 @@ const avatarUrl = computed(() => {
   box-shadow: 0 5px 15px rgba(255, 183, 77, 0.4),
               0 2px 10px rgba(255, 183, 77, 0.3),
               inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-  filter: drop-shadow(0 3px 6px rgba(255, 183, 77, 0.3)) !important;
 }
 
 .menu-item-link {
