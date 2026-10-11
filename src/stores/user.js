@@ -1,5 +1,20 @@
 import {defineStore} from "pinia";
 import {router} from "@/router.js";
+import {apiFetch} from "@/api.js";
+import {useRecommendationsStore} from "@/stores/recommendation.js";
+import {useReactionsStore} from "@/stores/reactions.js";
+
+/** Expiry of the persisted session: the token's `exp` claim, so the store never outlives the JWT. */
+function sessionExpiry(token) {
+    try {
+        const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const exp = JSON.parse(atob(payload)).exp;
+        if (exp) return exp * 1000;
+    } catch (e) {
+        // no or malformed token: fall through to the default
+    }
+    return Date.now() + 24 * 60 * 60 * 1000;
+}
 
 export const useUserStore = defineStore('user', {
     persist: {
@@ -20,9 +35,10 @@ export const useUserStore = defineStore('user', {
                 }
             },
             setItem: (key, value) => {
+                const state = JSON.parse(value);
                 const payload = {
-                    value: JSON.parse(value),
-                    _expires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+                    value: state,
+                    _expires: sessionExpiry(state.token)
                 };
                 localStorage.setItem(key, JSON.stringify(payload));
             },
@@ -32,10 +48,8 @@ export const useUserStore = defineStore('user', {
     state: () => {
         return {
             user: null,
-            matches: null,
-            contacts: null,
-            avatar: null,
-            hasLoadedMatches: false
+            token: null,
+            avatar: null
         }
     },
     actions: {
@@ -43,254 +57,75 @@ export const useUserStore = defineStore('user', {
             this.user = user;
         },
         setAvatar(avatar) {
-            if (avatar != null && avatar === "https://example.com/photo.jpg") {
-                avatar = "/src/assets/avatar.jpg";
-            }
             this.avatar = avatar;
         },
-        setMatches(matches) {
-            this.matches = matches;
-        },
-        setHasLoadedMatches(hasLoadedMatches) {
-            this.hasLoadedMatches = hasLoadedMatches;
-        },
-        setUserContacts(contact) {
-            if (this.contacts == null && contact.length > 0) {
-                this.contacts = [];
-                this.contacts.push(contact);
-            } else {
-                if (contact.length > 0) {
-                    this.contacts.push(contact);
-                }
-            }
-        },
-        async getMatches() {
-            if (!this.contacts && this.user?.referenceId) {
-                try {
-                    await this.getContactsForUser(this.user.referenceId);
-                } catch (error) {
-                    console.error('Error loading contacts:', error);
-                    this.contacts = [];
-                }
-            }
-
-            if (!this.matches) {
-                return null;
-            }
-
-            if (this.contacts && this.contacts.length > 0) {
-                const contactedIds = this.contacts.map(contact => contact.contactReferenceId);
-                return this.matches.filter(match => !contactedIds.includes(match.referenceId));
-            }
-
-            return this.matches;
-        },
-        removeMatch(id) {
-            this.matches = this.matches.filter(match => match.id !== id);
-        },
-        async register(username, email, password, age, address, gender, hobbies, interests) {
-            try {
-                const user = {
-                    name: username,
-                    email: email,
-                    password: password,
-                    age: age,
-                    address: address,
-                    gender: gender,
-                    status: "ACTIVE",
-                    hobbies: hobbies,
-                    interests: interests,
-                };
-
-                const response = await fetch('/api/user', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(user)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                return await response.json();
-            } catch (error) {
-                throw error;
-            }
+        /** Registration (RegistrationRequest): name, email, password, birthDate, gender, address, bio, interests, hobbies. */
+        async register(registration) {
+            return apiFetch('/api/user', {
+                method: 'POST',
+                body: JSON.stringify(registration)
+            });
         },
         async logout() {
             this.user = null;
-            this.matches = null;
+            this.token = null;
             this.avatar = null;
-            this.contacts = null;
-            this.hasLoadedMatches = false;
+            useRecommendationsStore().reset();
+            useReactionsStore().reset();
             await router.push('/login');
         },
         async login(email, password) {
             try {
-                const response = await fetch('/api/user/login', {
+                const tokenResponse = await apiFetch('/api/auth/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
                     body: JSON.stringify({
-                        email: email,
+                        username: email,
                         password: password
                     })
                 });
+                this.token = tokenResponse.access_token;
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                const user = data.user || data.data || data;
-
-                if (!user) {
-                    throw new Error('No user data received from server');
-                }
-
+                const user = await apiFetch('/api/me');
                 this.setUser(user);
                 this.setAvatar(user.photo);
                 await router.push('/');
                 return user;
             } catch (error) {
                 this.setUser(null);
+                this.token = null;
                 throw error;
             }
         },
-        async getMatchesByRecommendations(referenceIds) {
-            try {
-                const response = await fetch('/api/user/search', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        referenceIds: referenceIds
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                const matches = data.matches || data.data || data;
-                this.setMatches(matches);
-                return matches;
-            } catch (error) {
-                console.error('Error fetching recommendations:', error);
-                this.matches = [];
-            }
+        async updateUser(changes) {
+            const user = await apiFetch('/api/me', {
+                method: 'PATCH',
+                body: JSON.stringify(changes)
+            });
+            this.setUser(user);
+            return user;
         },
-        async updateUser(user) {
-            try {
-                const response = await fetch('/api/user', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(user)
-                })
-            } catch (error) {
-                throw error;
-            }
+        async updatePreferences(preferences) {
+            const saved = await apiFetch('/api/me/preferences', {
+                method: 'PUT',
+                body: JSON.stringify(preferences)
+            });
+            this.setUser({...this.user, preferences: saved});
+            return saved;
         },
         async uploadAvatar(file) {
             if (this.user == null) {
                 return new Error('User not logged in');
             }
 
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
+            const formData = new FormData();
+            formData.append('file', file);
 
-                const response = await fetch('/api/photos/' + this.user.referenceId, {
-                    method: 'POST',
-                    headers: {},
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                this.setAvatar(data.url);
-                return data;
-            } catch (error) {
-                throw error;
-            }
-        },
-        async sendLike(referenceId) {
-            try {
-                const response = await fetch('/api/contact', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        userReferenceId: this.user.referenceId,
-                        contactReferenceId: referenceId,
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                this.setUserContacts(data);
-                return data;
-            } catch (error) {
-                throw error;
-            }
-        },
-        async getContactsForUser(userId) {
-            try {
-                const response = await fetch('/api/contact/' + userId, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                this.setUserContacts(data);
-                return data;
-            } catch (e) {
-                throw e;
-            }
-        },
-        async sendRejection(referenceId) {
-            try {
-                const response = await fetch('/api/contact', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        userReferenceId: this.user.referenceId,
-                        contactReferenceId: referenceId,
-                        status: "REJECTED"
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                this.setUserContacts(data);
-                return data;
-            } catch (error) {
-                throw error;
-            }
+            const data = await apiFetch('/api/me/photo', {
+                method: 'POST',
+                body: formData
+            });
+            this.setAvatar(data.url);
+            return data;
         }
     }
 })

@@ -5,6 +5,7 @@ import {computed} from "vue";
 import {useRoute} from "vue-router";
 import {useUserStore} from "@/stores/user.js";
 import LogoIcon from '@/assets/mainmenu-logo.svg';
+import defaultAvatar from '@/assets/avatar.jpg';
 
 const route = useRoute();
 const user = useUserStore();
@@ -66,13 +67,7 @@ const isLoggedId = computed(() => {
   return user.user !== null;
 });
 
-const avatarUrl = computed(() => {
-  if (user.avatar) {
-    return user.avatar
-  } else {
-    return "src/assets/avatar.jpg"
-  }
-});
+const avatarUrl = computed(() => user.avatar || defaultAvatar);
 </script>
 
 <template>

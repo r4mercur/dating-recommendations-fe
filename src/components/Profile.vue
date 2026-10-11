@@ -1,145 +1,328 @@
 <script setup>
-import {computed, onMounted, ref} from 'vue'
+import {computed, onMounted, reactive, ref} from 'vue'
+import DatePicker from 'primevue/datepicker'
+import InputText from 'primevue/inputtext'
+import MultiSelect from 'primevue/multiselect'
+import Select from 'primevue/select'
+import Slider from 'primevue/slider'
+import Textarea from 'primevue/textarea'
+import {apiFetch} from '@/api.js'
 import {useUserStore} from '@/stores/user'
-import {useRecommendationsStore} from "@/stores/recommendation.js";
-import ProfileUploadModal from "@/components/modal/ProfileUploadModal.vue";
+import {useRecommendationsStore} from '@/stores/recommendation.js'
+import {useReactionsStore} from '@/stores/reactions.js'
+import {TagCategory, useTagsStore} from '@/stores/tags.js'
+import ProfileSection from '@/components/ProfileSection.vue'
+import ProfileUploadModal from '@/components/modal/ProfileUploadModal.vue'
+import defaultAvatar from '@/assets/avatar.jpg'
+import {
+  BIO_MAX_LENGTH,
+  fromIsoDate,
+  genderLabel,
+  GENDERS,
+  latestBirthDate,
+  MAX_AGE,
+  MAX_DISTANCE_KM,
+  MAX_TAGS_PER_CATEGORY,
+  MIN_AGE,
+  toIsoDate
+} from '@/constants/profile.js'
 
 const userStore = useUserStore()
-const recommendationsStore = useRecommendationsStore();
+const recommendationsStore = useRecommendationsStore()
+const reactionsStore = useReactionsStore()
+const tagsStore = useTagsStore()
 
 const showUploadModal = ref(false)
-
 const user = computed(() => userStore.user)
 const avatar = computed(() => userStore.avatar)
+const maxBirthDate = latestBirthDate()
 
-const userData = computed(() => {
-  return user.value || {
-    name: 'Max Mustermann',
-    username: 'maxmuster',
-    email: 'max@example.com',
-    bio: 'Software Developer aus Berlin. Leidenschaftlicher Vue.js Entwickler und Coffee Lover ☕',
-    location: 'Berlin, Deutschland',
-    joinDate: '2024-01-15',
-    interests: ['Vue.js', 'JavaScript', 'Coffee', 'Reisen', 'Musik'],
-    age: 28,
-    profession: 'Software Developer'
-  }
+const stats = reactive({matches: null, chats: null, likes: null})
+
+/** one draft per section, filled when the section switches to edit mode */
+const draft = reactive({
+  bio: '',
+  basics: {name: '', birthDate: null, gender: null},
+  address: {street: '', zipCode: '', city: '', country: ''},
+  tags: {interests: [], hobbies: []},
+  preferences: {seekingGenders: [], ageRange: [MIN_AGE, MAX_AGE], maxDistanceKm: 50},
 })
 
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('de-DE', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+const birthDateText = computed(() => user.value?.birthDate
+    ? fromIsoDate(user.value.birthDate).toLocaleDateString('en-GB', {day: 'numeric', month: 'long', year: 'numeric'})
+    : null)
+
+const preferencesText = computed(() => {
+  const preferences = user.value?.preferences
+  if (!preferences) return null
+  const genders = preferences.seekingGenders.length === GENDERS.length
+      ? 'Everyone'
+      : preferences.seekingGenders.map(genderLabel).join(', ')
+  return {genders, ages: `${preferences.minAge}–${preferences.maxAge}`, distance: `${preferences.maxDistanceKm} km`}
+})
+
+function tagLabels(slugs) {
+  return (slugs || []).map(slug => tagsStore.label(slug))
+}
+
+/** profile changes that influence the recommendations invalidate the loaded ones */
+function afterMatchingChange() {
+  recommendationsStore.reset()
+}
+
+async function saveBio() {
+  await userStore.updateUser({bio: draft.bio.trim()})
+}
+
+async function saveBasics() {
+  const {name, birthDate, gender} = draft.basics
+  if (!name.trim()) throw new Error('Name is required.')
+  if (!birthDate) throw new Error('Birth date is required.')
+  if (birthDate > maxBirthDate) throw new Error(`You need to be at least ${MIN_AGE}.`)
+  await userStore.updateUser({name: name.trim(), birthDate: toIsoDate(birthDate), gender})
+  afterMatchingChange()
+}
+
+async function saveAddress() {
+  const {street, zipCode, city, country} = draft.address
+  if (!zipCode.trim() || !city.trim() || !country.trim()) throw new Error('Zip code, city and country are required.')
+  await userStore.updateUser({
+    address: {street: street.trim() || null, zipCode: zipCode.trim(), city: city.trim(), country: country.trim()}
   })
+  afterMatchingChange()
 }
 
-function onAvatarUploaded() {
-  showUploadModal.value = false
+async function saveTags() {
+  await userStore.updateUser({interests: draft.tags.interests, hobbies: draft.tags.hobbies})
+  afterMatchingChange()
 }
 
-// load recommendations initial after login
+async function savePreferences() {
+  const {seekingGenders, ageRange, maxDistanceKm} = draft.preferences
+  if (!seekingGenders.length) throw new Error('Choose at least one gender.')
+  await userStore.updatePreferences({seekingGenders, minAge: ageRange[0], maxAge: ageRange[1], maxDistanceKm})
+  afterMatchingChange()
+}
+
+function editBio() {
+  draft.bio = user.value.bio || ''
+}
+
+function editBasics() {
+  draft.basics = {name: user.value.name, birthDate: fromIsoDate(user.value.birthDate), gender: user.value.gender}
+}
+
+function editAddress() {
+  const address = user.value.address || {}
+  draft.address = {
+    street: address.street || '',
+    zipCode: address.zipCode || '',
+    city: address.city || '',
+    country: address.country || 'DE'
+  }
+}
+
+function editTags() {
+  draft.tags = {interests: [...(user.value.interests || [])], hobbies: [...(user.value.hobbies || [])]}
+}
+
+function editPreferences() {
+  const preferences = user.value.preferences
+  draft.preferences = {
+    seekingGenders: [...(preferences?.seekingGenders || GENDERS.map(gender => gender.value))],
+    ageRange: [preferences?.minAge ?? MIN_AGE, preferences?.maxAge ?? MAX_AGE],
+    maxDistanceKm: preferences?.maxDistanceKm ?? 50,
+  }
+}
+
+async function loadStats() {
+  const [matches, conversations, likes] = await Promise.allSettled([
+    reactionsStore.loadMatches(),
+    apiFetch('/api/me/conversations'),
+    apiFetch('/api/me/likes-received'),
+  ])
+  stats.matches = matches.status === 'fulfilled' ? matches.value.length : null
+  stats.chats = conversations.status === 'fulfilled'
+      ? conversations.value.filter(conversation => conversation.lastMessage).length
+      : null
+  stats.likes = likes.status === 'fulfilled' ? likes.value.length : null
+}
+
 onMounted(() => {
-  if (userStore.user && userStore.user.referenceId) {
-    recommendationsStore.getRecommendations(userStore.user.referenceId);
+  tagsStore.load()
+  loadStats()
+  // load recommendations right after login so the discover page is ready
+  if (user.value?.referenceId && !recommendationsStore.loaded) {
+    recommendationsStore.load()
   }
 })
 </script>
 
 <template>
-  <div class="profile-container">
-    <div class="profile-sidebar">
+  <div class="profile-container" v-if="user">
+    <aside class="profile-sidebar">
       <div class="avatar-section">
-        <img
-          :src="avatar || '/src/assets/avatar.jpg'"
-          :alt="userData.name"
-          class="profile-avatar"
-        />
-        <h1 class="profile-name">{{ userData.name }}</h1>
-        <p class="profile-username">@{{ userData.username }}</p>
+        <button class="avatar-button" type="button" @click="showUploadModal = true" title="Change profile picture">
+          <img :src="avatar || defaultAvatar" :alt="user.name" class="profile-avatar"/>
+          <span class="avatar-overlay"><i class="pi pi-camera" aria-hidden="true"></i> Change</span>
+        </button>
+        <h1 class="profile-name">{{ user.name }}</h1>
+        <p class="profile-subline">
+          {{ user.age }}<template v-if="user.address?.city"> · {{ user.address.city }}</template>
+        </p>
       </div>
 
-      <div class="profile-bio" v-if="userData.bio">
-        <p>{{ userData.bio }}</p>
+      <div class="profile-bio" v-if="user.bio">
+        <p>{{ user.bio }}</p>
       </div>
 
       <div class="profile-details">
-        <div class="detail-item" v-if="userData.location">
-          <i class="pi pi-map-marker"></i>
-          <span>{{ userData.location }}</span>
-        </div>
-
-        <div class="detail-item" v-if="userData.email">
+        <div class="detail-item">
           <i class="pi pi-envelope"></i>
-          <span>{{ userData.email }}</span>
+          <span>{{ user.email }}</span>
         </div>
-
-        <div class="detail-item" v-if="userData.joinDate">
-          <i class="pi pi-calendar"></i>
-          <span>Joined since {{ formatDate(userData.joinDate) }}</span>
+        <div class="detail-item" v-if="user.gender">
+          <i class="pi pi-user"></i>
+          <span>{{ genderLabel(user.gender) }}</span>
+        </div>
+        <div class="detail-item" v-if="user.status && user.status !== 'ACTIVE'">
+          <i class="pi pi-eye-slash"></i>
+          <span>Profile hidden ({{ user.status.toLowerCase() }})</span>
         </div>
       </div>
-    </div>
+    </aside>
 
     <div class="profile-content">
       <div class="profile-header">
-        <h2>About me</h2>
-
-        <button class="edit-button" @click="showUploadModal = true">
-          <i class="pi pi-camera"></i>
-          Profilbild ändern
-        </button>
+        <h2>Your profile</h2>
       </div>
 
       <div class="info-grid">
-        <div class="info-card">
-          <h3>Basic information</h3>
-          <div class="info-list">
-            <div class="info-item">
-              <span class="label">Age:</span>
-              <span class="value">{{ userData.age }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Job:</span>
-              <span class="value">{{ userData.profession }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Location:</span>
-              <span class="value">{{ userData.location }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="info-card">
-          <h3>Interest</h3>
-          <div class="interests-tags">
-            <span
-              v-for="interest in userData.interests"
-              :key="interest"
-              class="interest-tag"
-            >
-              {{ interest }}
-            </span>
-          </div>
-        </div>
-
-        <div class="info-card">
-          <h3>Profile statistic</h3>
+        <ProfileSection title="Activity" icon="pi-chart-bar">
           <div class="stats-grid">
-            <div class="stat-item">
-              <span class="stat-number">42</span>
+            <router-link to="/matches" class="stat-item">
+              <span class="stat-number">{{ stats.matches ?? '–' }}</span>
               <span class="stat-label red-color">Matches</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-number">18</span>
+            </router-link>
+            <router-link to="/messages" class="stat-item">
+              <span class="stat-number">{{ stats.chats ?? '–' }}</span>
               <span class="stat-label green-color">Chats</span>
-            </div>
+            </router-link>
             <div class="stat-item">
-              <span class="stat-number">5</span>
-              <span class="stat-label orange-color">Dates</span>
+              <span class="stat-number">{{ stats.likes ?? '–' }}</span>
+              <span class="stat-label orange-color">Likes received</span>
             </div>
           </div>
-        </div>
+        </ProfileSection>
+
+        <ProfileSection title="About me" icon="pi-comment" :save="saveBio" @edit="editBio">
+          <p v-if="user.bio" class="bio-text">{{ user.bio }}</p>
+          <p v-else class="empty">Tell others something about you. Profiles with a bio get more likes.</p>
+          <template #edit>
+            <Textarea v-model="draft.bio" rows="4" autoResize :maxlength="BIO_MAX_LENGTH" fluid
+                      placeholder="What should people know about you?" aria-label="About me"/>
+            <span class="counter">{{ draft.bio.length }}/{{ BIO_MAX_LENGTH }}</span>
+          </template>
+        </ProfileSection>
+
+        <ProfileSection title="Basic information" icon="pi-id-card" :save="saveBasics" @edit="editBasics">
+          <dl class="info-list">
+            <div class="info-item"><dt>Name</dt><dd>{{ user.name }}</dd></div>
+            <div class="info-item"><dt>Birth date</dt><dd>{{ birthDateText ?? '–' }} ({{ user.age }})</dd></div>
+            <div class="info-item"><dt>Gender</dt><dd>{{ genderLabel(user.gender) }}</dd></div>
+          </dl>
+          <template #edit>
+            <label class="field">Name
+              <InputText v-model="draft.basics.name" maxlength="255" fluid/>
+            </label>
+            <div class="two-columns">
+              <label class="field">Birth date
+                <DatePicker v-model="draft.basics.birthDate" :maxDate="maxBirthDate" dateFormat="dd.mm.yy" showIcon fluid/>
+              </label>
+              <label class="field">Gender
+                <Select v-model="draft.basics.gender" :options="GENDERS" optionLabel="label" optionValue="value" fluid/>
+              </label>
+            </div>
+          </template>
+        </ProfileSection>
+
+        <ProfileSection title="Location" icon="pi-map-marker" :save="saveAddress" @edit="editAddress">
+          <dl class="info-list">
+            <div class="info-item"><dt>City</dt><dd>{{ user.address?.zipCode }} {{ user.address?.city }}</dd></div>
+            <div class="info-item" v-if="user.address?.street"><dt>Street</dt><dd>{{ user.address.street }}</dd></div>
+            <div class="info-item"><dt>Country</dt><dd>{{ user.address?.country }}</dd></div>
+          </dl>
+          <p class="hint">Others only see your city. The zip code decides who is nearby.</p>
+          <template #edit>
+            <label class="field">Street and number (optional)
+              <InputText v-model="draft.address.street" fluid autocomplete="street-address"/>
+            </label>
+            <div class="two-columns">
+              <label class="field">Zip code
+                <InputText v-model="draft.address.zipCode" fluid autocomplete="postal-code"/>
+              </label>
+              <label class="field">City
+                <InputText v-model="draft.address.city" fluid autocomplete="address-level2"/>
+              </label>
+            </div>
+            <label class="field">Country
+              <InputText v-model="draft.address.country" fluid autocomplete="country"/>
+            </label>
+          </template>
+        </ProfileSection>
+
+        <ProfileSection title="Interests and hobbies" icon="pi-tags" :save="saveTags" @edit="editTags">
+          <div class="tag-group">
+            <span class="tag-group-label">Interests</span>
+            <div class="interests-tags">
+              <span v-for="label in tagLabels(user.interests)" :key="label" class="interest-tag">{{ label }}</span>
+              <span v-if="!user.interests?.length" class="empty">None yet</span>
+            </div>
+          </div>
+          <div class="tag-group">
+            <span class="tag-group-label">Hobbies</span>
+            <div class="interests-tags">
+              <span v-for="label in tagLabels(user.hobbies)" :key="label" class="interest-tag hobby">{{ label }}</span>
+              <span v-if="!user.hobbies?.length" class="empty">None yet</span>
+            </div>
+          </div>
+          <template #edit>
+            <label class="field">Interests
+              <MultiSelect v-model="draft.tags.interests" :options="tagsStore.options(TagCategory.INTEREST)"
+                           optionLabel="label" optionValue="value" filter display="chip"
+                           :selectionLimit="MAX_TAGS_PER_CATEGORY" fluid/>
+            </label>
+            <label class="field">Hobbies
+              <MultiSelect v-model="draft.tags.hobbies" :options="tagsStore.options(TagCategory.HOBBY)"
+                           optionLabel="label" optionValue="value" filter display="chip"
+                           :selectionLimit="MAX_TAGS_PER_CATEGORY" fluid/>
+            </label>
+          </template>
+        </ProfileSection>
+
+        <ProfileSection title="Who you're looking for" icon="pi-search" :save="savePreferences" @edit="editPreferences">
+          <dl class="info-list" v-if="preferencesText">
+            <div class="info-item"><dt>Gender</dt><dd>{{ preferencesText.genders }}</dd></div>
+            <div class="info-item"><dt>Age</dt><dd>{{ preferencesText.ages }}</dd></div>
+            <div class="info-item"><dt>Distance</dt><dd>up to {{ preferencesText.distance }}</dd></div>
+          </dl>
+          <template #edit>
+            <label class="field">Show me
+              <MultiSelect v-model="draft.preferences.seekingGenders" :options="GENDERS" optionLabel="label"
+                           optionValue="value" display="chip" fluid/>
+            </label>
+            <div class="field">
+              <span>Age {{ draft.preferences.ageRange[0] }}–{{ draft.preferences.ageRange[1] }}</span>
+              <Slider v-model="draft.preferences.ageRange" range :min="MIN_AGE" :max="MAX_AGE" class="slider"
+                      aria-label="Age range"/>
+            </div>
+            <div class="field">
+              <span>Up to {{ draft.preferences.maxDistanceKm }} km</span>
+              <Slider v-model="draft.preferences.maxDistanceKm" :min="1" :max="MAX_DISTANCE_KM" class="slider"
+                      aria-label="Maximum distance"/>
+            </div>
+          </template>
+        </ProfileSection>
       </div>
     </div>
   </div>
@@ -147,7 +330,7 @@ onMounted(() => {
   <ProfileUploadModal
       v-if="showUploadModal"
       @close="showUploadModal = false"
-      @uploaded="onAvatarUploaded"
+      @uploaded="showUploadModal = false"
   />
 </template>
 
@@ -177,27 +360,54 @@ onMounted(() => {
   margin-bottom: 24px;
 }
 
+.avatar-button {
+  position: relative;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
 .profile-avatar {
+  display: block;
   width: 200px;
   height: 200px;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid #f6f8fa;
-  margin-bottom: 16px;
+  border: 4px solid #34495e;
+}
+
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 50%;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, .45);
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+
+.avatar-button:hover .avatar-overlay,
+.avatar-button:focus-visible .avatar-overlay {
+  opacity: 1;
 }
 
 .profile-name {
   font-size: 24px;
   font-weight: 600;
-  margin: 0 0 4px 0;
-  color: rgba(235, 235, 235, 0.64);
+  margin: 16px 0 4px 0;
+  color: rgba(235, 235, 235, 0.9);
 }
 
-.profile-username {
-  font-size: 20px;
-  color: #656d76;
-  margin: 0 0 16px 0;
-  font-weight: 300;
+.profile-subline {
+  margin: 0;
+  color: rgba(235, 235, 235, 0.64);
 }
 
 .profile-bio {
@@ -209,7 +419,7 @@ onMounted(() => {
 .profile-bio p {
   margin: 0;
   line-height: 1.5;
-  color: #24292f;
+  color: rgba(235, 235, 235, 0.8);
 }
 
 .profile-details {
@@ -224,15 +434,16 @@ onMounted(() => {
   gap: 8px;
   color: rgba(235, 235, 235, 0.64);
   font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
 .detail-item i {
-  color: rgba(235, 235, 235, 0.64);
   width: 16px;
 }
 
 .profile-content {
   flex: 1;
+  min-width: 0;
   border-radius: 12px;
   padding: 24px;
   border: 1px solid #34495e;
@@ -240,9 +451,6 @@ onMounted(() => {
 }
 
 .profile-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 1px solid #34495e;
@@ -254,62 +462,87 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.edit-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: linear-gradient(145deg, #34495e, #2c3e50);
-  border: 1px solid #34495e;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.edit-button:hover {
-  background: linear-gradient(135deg, #ffb74d, #ffa726) !important;
-  border-color: #8c959f;
-}
-
 .info-grid {
   display: grid;
   gap: 24px;
-}
-
-.info-card {
-  border-radius: 8px;
-  padding: 20px;
-  border: 1px solid #34495e;
-}
-
-.info-card h3 {
-  margin: 0 0 16px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: rgba(235, 235, 235, 0.64);
 }
 
 .info-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin: 0;
 }
 
 .info-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  gap: 16px;
 }
 
-.info-item .label {
+.info-item dt {
   font-weight: 500;
-  color: #656d76;
+  color: #8c959f;
 }
 
-.info-item .value {
-  color: rgba(235, 235, 235, 0.64);
-  font-weight: 400;
+.info-item dd {
+  margin: 0;
+  text-align: right;
+  color: rgba(235, 235, 235, 0.8);
+}
+
+.bio-text {
+  margin: 0;
+  line-height: 1.6;
+  white-space: pre-line;
+  color: rgba(235, 235, 235, 0.8);
+}
+
+.empty,
+.hint {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(235, 235, 235, 0.5);
+}
+
+.hint {
+  margin-top: 12px;
+}
+
+.counter {
+  align-self: flex-end;
+  font-size: 12px;
+  color: rgba(235, 235, 235, 0.5);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(235, 235, 235, 0.8);
+}
+
+.slider {
+  margin: 10px 8px 4px;
+}
+
+.two-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tag-group + .tag-group {
+  margin-top: 16px;
+}
+
+.tag-group-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #8c959f;
 }
 
 .interests-tags {
@@ -319,16 +552,17 @@ onMounted(() => {
 }
 
 .interest-tag {
-  background: #dbeafe;
-  color: #1e40af;
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 14px;
   font-weight: 500;
+  color: #ffcc80;
+  background: rgba(255, 167, 38, .12);
 }
 
-.interest-tag:hover {
-  cursor: pointer;
+.interest-tag.hobby {
+  color: #9fe1cb;
+  background: rgba(29, 158, 117, .15);
 }
 
 .stats-grid {
@@ -340,9 +574,11 @@ onMounted(() => {
 .red-color {
   color: #ef5350;
 }
+
 .green-color {
   color: #66bb6a;
 }
+
 .orange-color {
   color: #ffa726;
 }
@@ -352,7 +588,13 @@ onMounted(() => {
   padding: 16px;
   background: linear-gradient(145deg, #34495e, #2c3e50);
   border-radius: 6px;
-  border: 1px solid rgba(235, 235, 235, 0.64);
+  border: 1px solid #34495e;
+  text-decoration: none;
+  transition: border-color .2s ease;
+}
+
+a.stat-item:hover {
+  border-color: #ffa726;
 }
 
 .stat-number {
@@ -364,12 +606,11 @@ onMounted(() => {
 }
 
 .stat-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-
 
 @media (max-width: 768px) {
   .profile-container {
@@ -388,7 +629,8 @@ onMounted(() => {
     height: 150px;
   }
 
-  .stats-grid {
+  .stats-grid,
+  .two-columns {
     grid-template-columns: 1fr;
   }
 }

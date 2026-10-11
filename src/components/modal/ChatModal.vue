@@ -20,9 +20,25 @@
             option-label="name"
             option-value="referenceId"
             placeholder="Choose a contact to chat with..."
-            class="w-full"
+            class="w-full contact-select"
+            :pt="{ overlay: { class: 'contact-select-overlay' } }"
             :loading="loading"
-          />
+          >
+            <template #value="{ placeholder }">
+              <div v-if="selectedContactData" class="contact-option">
+                <img :src="selectedContactData.photo || defaultAvatar" :alt="selectedContactData.name" class="contact-photo" />
+                <span class="contact-name">{{ selectedContactData.name }}</span>
+              </div>
+              <span v-else class="contact-placeholder">{{ placeholder }}</span>
+            </template>
+
+            <template #option="{ option }">
+              <div class="contact-option">
+                <img :src="option.photo || defaultAvatar" :alt="option.name" class="contact-photo" />
+                <span class="contact-name">{{ option.name }}</span>
+              </div>
+            </template>
+          </Select>
         </div>
 
         <div class="modal-actions">
@@ -47,40 +63,37 @@
 <script setup>
 import {computed, onMounted, ref} from 'vue'
 import {useUserStore} from '@/stores/user.js'
+import {useReactionsStore} from '@/stores/reactions.js'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
+import defaultAvatar from '@/assets/avatar.jpg'
 
 const emit = defineEmits(['close', 'chat-created'])
 
 const userStore = useUserStore()
+const reactionsStore = useReactionsStore()
 const selectedContact = ref(null)
 const loading = ref(false)
 
-// Compute available contacts from accepted contacts
-const availableContacts = computed(() => {
-  if (!userStore.contacts || userStore.contacts.length === 0) {
-    return []
-  }
+// everyone you matched with can be messaged
+const availableContacts = computed(() => (reactionsStore.matches || []).map(match => ({
+  referenceId: match.user.referenceId,
+  name: match.user.name,
+  photo: match.user.photo
+})))
 
-  // Filter for accepted contacts and extract contact user info
-  return userStore.contacts
-    .filter(contact => contact.status === 'ACCEPTED')
-    .map(contact => ({
-      referenceId: contact.contactUser.referenceId,
-      name: contact.contactUser.name,
-      email: contact.contactUser.email,
-      photo: contact.contactUser.photo
-    }))
-})
+// the Select only hands back the value (referenceId), so look up the full contact for the trigger
+const selectedContactData = computed(() =>
+  availableContacts.value.find(contact => contact.referenceId === selectedContact.value) ?? null
+)
 
 onMounted(async () => {
-  // Load contacts if not already loaded
-  if (!userStore.contacts && userStore.user?.referenceId) {
+  if (!reactionsStore.matches && userStore.user?.referenceId) {
     loading.value = true
     try {
-      await userStore.getContactsForUser(userStore.user.referenceId)
+      await reactionsStore.loadMatches()
     } catch (error) {
-      console.error('Error loading contacts:', error)
+      console.error('Error loading matches:', error)
     } finally {
       loading.value = false
     }
@@ -211,4 +224,83 @@ async function createChat() {
 .w-full {
   width: 100%;
 }
+
+.contact-select :deep(.p-select) {
+  min-height: 56px;
+  background: rgba(44, 62, 80, 0.6);
+  border: 1px solid #34495e;
+  border-radius: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.contact-select :deep(.p-select:hover) {
+  border-color: rgba(255, 167, 38, 0.5);
+}
+
+.contact-select :deep(.p-select:focus-within) {
+  border-color: #ffa726;
+  box-shadow: 0 0 0 3px rgba(255, 167, 38, 0.2);
+}
+
+.contact-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.contact-photo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid #34495e;
+}
+
+.contact-name {
+  font-weight: 500;
+  color: rgba(235, 235, 235, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-placeholder {
+  color: rgba(235, 235, 235, 0.5);
+}
 </style>
+
+<!-- the overlay is teleported to <body>, so it can't be reached by scoped styles -->
+<style>
+.contact-select-overlay {
+  background: #2c3e50;
+  border: 1px solid #34495e;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+.contact-select-overlay .p-select-list {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contact-select-overlay .p-select-option {
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: rgba(235, 235, 235, 0.9);
+}
+
+.contact-select-overlay .p-select-option.p-focus,
+.contact-select-overlay .p-select-option:hover {
+  background: rgba(52, 73, 94, 0.9);
+}
+
+.contact-select-overlay .p-select-option.p-select-option-selected {
+  background: rgba(255, 167, 38, 0.15);
+  color: #ffcc80;
+}
+</style>
+

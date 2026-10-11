@@ -1,158 +1,113 @@
 <script setup>
-
-import Message from "primevue/message";
-import Button from "primevue/button";
-import {Select} from "primevue";
-import MultiSelect from "primevue/multiselect";
-import Toast from "primevue/toast";
+import {onMounted, ref} from "vue";
 import {Form} from "@primevue/forms";
-import InputText from "primevue/inputtext";
+import Button from "primevue/button";
+import DatePicker from "primevue/datepicker";
 import InputGroup from "primevue/inputgroup";
 import InputGroupAddon from "primevue/inputgroupaddon";
-import {router} from "@/router.js";
-import {useForm} from "@primevue/forms/useform";
-import {useUserStore} from "@/stores/user.js";
+import InputText from "primevue/inputtext";
+import Message from "primevue/message";
+import MultiSelect from "primevue/multiselect";
+import Password from "primevue/password";
+import Select from "primevue/select";
+import Textarea from "primevue/textarea";
 import {useToast} from "primevue/usetoast";
-import {ref} from "vue";
+import {router} from "@/router.js";
+import {useUserStore} from "@/stores/user.js";
+import {TagCategory, useTagsStore} from "@/stores/tags.js";
+import {
+  BIO_MAX_LENGTH,
+  GENDERS,
+  latestBirthDate,
+  MAX_TAGS_PER_CATEGORY,
+  PASSWORD_MIN_LENGTH,
+  toIsoDate
+} from "@/constants/profile.js";
 
 const userStore = useUserStore();
+const tagsStore = useTagsStore();
 const toast = useToast();
 
-const genders = [
-    {
-      'name': 'Male',
-      'value': 'MALE'
-    },
-    {
-      'name': 'Female',
-      'value': 'FEMALE'
-    },
-    {
-      'name': 'Divers',
-      'value': 'DIVERS'
-    }
-];
+const submitting = ref(false);
+const maxBirthDate = latestBirthDate();
 
-const hobbies = ref([
-    {name: 'Reading', value: 'READING'},
-    {name: 'Writing', value: 'WRITING'},
-    {name: 'Coding', value: 'CODING'},
-    {name: 'Playing Video Games', value: 'PLAYING_VIDEO_GAMES'},
-    {name: 'Watching Movies', value: 'WATCHING_MOVIES'},
-    {name: 'Playing Music', value: 'PLAYING_MUSIC'},
-    {name: 'Hiking', value: 'HIKING'},
-    {name: 'Swimming', value: 'SWIMMING'},
-    {name: 'Cycling', value: 'CYCLING'},
-    {name: 'Sports', value: 'SPORTS'},
-    {name: 'Traveling', value: 'TRAVELING'},
-    {name: 'Cooking', value: 'COOKING'},
-    {name: 'Gardening', value: 'GARDENING'},
-    {name: 'Photography', value: 'PHOTOGRAPHY'},
-    {name: 'Art', value: 'ART'},
-]);
-
-const interests = ref([
-    {name: 'Sports', value: 'SPORTS'},
-    {name: 'Music', value: 'MUSIC'},
-    {name: 'Movies', value: 'MOVIES'},
-    {name: 'Books', value: 'BOOKS'},
-    {name: 'Technology', value: 'TECHNOLOGY'},
-    {name: 'Travel', value: 'TRAVEL'},
-    {name: 'Food', value: 'FOOD'},
-    {name: 'Fashion', value: 'FASHION'},
-    {name: 'Gaming', value: 'GAMING'},
-    {name: 'DIY', value: 'DIY'},
-    {name: 'Crafts', value: 'CRAFTS'},
-])
-
-const initValues ={
-    username: '',
-    email: '',
-    password: '',
-    age: 18,
-    gender: '',
-    hobbies: [],
-    interests: [],
-    street: '',
-    city: '',
-    zipCode: '',
-    country: ''
+const initialValues = {
+  name: '',
+  email: '',
+  password: '',
+  birthDate: null,
+  gender: null,
+  bio: '',
+  interests: [],
+  hobbies: [],
+  street: '',
+  zipCode: '',
+  city: '',
+  country: 'DE',
 };
 
-const resolver = ({ values }) => {
+const resolver = ({values}) => {
   const errors = {};
-
-  if (!values.username) {
-    errors.username = [{ message: 'Username is required.' }];
-  }
-
-  if (!values.email) {
-    errors.email = [{ message: 'Email is required.' }];
-  }
-
-  if (!values.password) {
-    errors.password = [{ message: 'Password is required.' }];
-  }
-
-  if (!values.age) {
-    errors.age = [{ message: 'Age is required.' }];
-  }
-
-  if (!values.gender) {
-    errors.gender = [{ message: 'Gender is required.' }];
-  }
-  if (!values.street) {
-    errors.street = [{ message: 'Street is required.' }];
-  }
-  if (!values.city) {
-    errors.city = [{ message: 'City is required.' }];
-  }
-  if (!values.zipCode) {
-    errors.zipCode = [{ message: 'Zip code is required.' }];
-  }
-  if (!values.country) {
-    errors.country = [{ message: 'Country is required.' }];
-  }
-
-  return {
-    errors
+  const required = (field, message) => {
+    if (!values[field] || (typeof values[field] === 'string' && !values[field].trim())) {
+      errors[field] = [{message}];
+    }
   };
+
+  required('name', 'Name is required.');
+  required('email', 'Email is required.');
+  if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
+    errors.email = [{message: 'Enter a valid email address.'}];
+  }
+  if (!values.password || values.password.length < PASSWORD_MIN_LENGTH) {
+    errors.password = [{message: `Use at least ${PASSWORD_MIN_LENGTH} characters.`}];
+  }
+  required('birthDate', 'Birth date is required.');
+  if (values.birthDate && values.birthDate > maxBirthDate) {
+    errors.birthDate = [{message: 'You need to be at least 18.'}];
+  }
+  required('gender', 'Gender is required.');
+  if ((values.bio || '').length > BIO_MAX_LENGTH) {
+    errors.bio = [{message: `At most ${BIO_MAX_LENGTH} characters.`}];
+  }
+  required('zipCode', 'Zip code is required.');
+  required('city', 'City is required.');
+  required('country', 'Country is required.');
+
+  return {errors};
 };
 
-const { values, meta, errors, handleSubmit } = useForm({ initialValues: initValues, resolver });
+async function onFormSubmit({valid, values}) {
+  if (!valid || submitting.value) return;
+  submitting.value = true;
+  try {
+    await userStore.register({
+      name: values.name.trim(),
+      email: values.email.trim(),
+      password: values.password,
+      birthDate: toIsoDate(values.birthDate),
+      gender: values.gender,
+      bio: values.bio?.trim() || null,
+      interests: values.interests,
+      hobbies: values.hobbies,
+      address: {
+        street: values.street?.trim() || null,
+        zipCode: values.zipCode.trim(),
+        city: values.city.trim(),
+        country: values.country.trim(),
+      },
+    });
+    toast.add({severity: 'success', summary: 'Welcome', detail: 'Your account is ready.', life: 3000});
+    await userStore.login(values.email.trim(), values.password);
+  } catch (error) {
+    // e.g. email taken (409) or an address that can't be located (400)
+    toast.add({severity: 'error', summary: "Couldn't create your account", detail: error.message, life: 5000});
+  } finally {
+    submitting.value = false;
+  }
+}
 
-const onFormSubmit = handleSubmit(async (values) => {
-  let email = values.originalEvent.states.email.value;
-  let username = values.originalEvent.states.username.value;
-  let password = values.originalEvent.states.password.value;
-  let age = values.originalEvent.states.age.value;
-  let address = {
-        street: values.originalEvent.states.street.value,
-        city: values.originalEvent.states.city.value,
-        zipCode: values.originalEvent.states.zipCode.value,
-        country: values.originalEvent.states.country.value
-  };
-  let gender = values.originalEvent.states.gender.value.value;
-  let selectedHobbies = (values.originalEvent.states.hobbies.value || []).map((hobby) => hobby.value);
-  let selectedInterests = (values.originalEvent.states.interests.value || []).map((interest) => interest.value);
-
-  const user = await userStore.register(
-      username,
-      email,
-      password,
-      age,
-      address,
-      gender,
-      selectedHobbies,
-      selectedInterests
-  );
-  toast.add({ severity: 'success', summary: 'Registered', detail: `Welcome ${user.name || user.email}!`, life: 3000 });
-});
-
-
-const toLogin = () => {
-  router.push('/login');
-};
+onMounted(() => tagsStore.load());
 </script>
 
 <template>
@@ -164,251 +119,133 @@ const toLogin = () => {
         </h2>
       </div>
       <div class="mt-2 py-4 px-6 shadow-lg rounded-lg form-container">
-        <Toast />
-        <Form v-slot="$form" :initialValues="initValues" :resolver :validateOnValueUpdate="false" :validateOnBlur="true" @submit="onFormSubmit" class="space-y-6">
+        <Form v-slot="$form" :initialValues="initialValues" :resolver="resolver" :validateOnValueUpdate="false"
+              :validateOnBlur="true" @submit="onFormSubmit" class="space-y-6">
           <div class="space-y-2">
-            <label for="username" class="block text-sm font-medium ">
-              Username
-            </label>
-            <div class="mt-1">
-              <InputText
-                  id="username"
-                  name="username"
-                  type="text"
-                  placeholder="Enter your username"
-                  fluid
-                  class="w-full"
-              />
+            <label for="name">Name</label>
+            <InputText id="name" name="name" placeholder="How others will see you" fluid autocomplete="name"/>
+            <Message v-if="$form.name?.invalid" severity="error" size="small" variant="simple">
+              {{ $form.name.error?.message }}
+            </Message>
+          </div>
+
+          <div class="space-y-2">
+            <label for="email">Email</label>
+            <InputText id="email" name="email" type="email" placeholder="name@example.com" fluid autocomplete="email"/>
+            <Message v-if="$form.email?.invalid" severity="error" size="small" variant="simple">
+              {{ $form.email.error?.message }}
+            </Message>
+          </div>
+
+          <div class="space-y-2">
+            <label for="password">Password</label>
+            <Password inputId="password" name="password" :feedback="false" toggleMask fluid
+                      :placeholder="`At least ${PASSWORD_MIN_LENGTH} characters`" autocomplete="new-password"/>
+            <Message v-if="$form.password?.invalid" severity="error" size="small" variant="simple">
+              {{ $form.password.error?.message }}
+            </Message>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 two-columns">
+            <div class="space-y-2">
+              <label for="birthDate">Birth date</label>
+              <DatePicker inputId="birthDate" name="birthDate" :maxDate="maxBirthDate" dateFormat="dd.mm.yy"
+                          placeholder="dd.mm.yyyy" showIcon fluid/>
+              <Message v-if="$form.birthDate?.invalid" severity="error" size="small" variant="simple">
+                {{ $form.birthDate.error?.message }}
+              </Message>
             </div>
-            <Message v-if="$form.username?.invalid" severity="error" size="small" variant="simple" class="mt-1">
-              {{ $form.username?.error?.message }}
-            </Message>
-          </div>
 
-          <div class="space-y-2">
-            <label for="email" class="block text-sm font-medium ">
-              Email
-            </label>
-            <div class="mt-1">
-              <InputText
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  fluid
-                  class="w-full"
-              />
+            <div class="space-y-2">
+              <label for="gender">Gender</label>
+              <Select inputId="gender" name="gender" :options="GENDERS" optionLabel="label" optionValue="value"
+                      placeholder="Select" fluid/>
+              <Message v-if="$form.gender?.invalid" severity="error" size="small" variant="simple">
+                {{ $form.gender.error?.message }}
+              </Message>
             </div>
-            <Message v-if="$form.email?.invalid" severity="error" size="small" variant="simple" class="mt-1">
-              {{ $form.email?.error?.message }}
+          </div>
+
+          <div class="space-y-2">
+            <label for="bio">About you <span class="optional">(optional)</span></label>
+            <Textarea id="bio" name="bio" rows="3" autoResize :maxlength="BIO_MAX_LENGTH" fluid
+                      placeholder="What should people know about you?"/>
+            <Message v-if="$form.bio?.invalid" severity="error" size="small" variant="simple">
+              {{ $form.bio.error?.message }}
             </Message>
           </div>
 
           <div class="space-y-2">
-            <label for="password" class="block text-sm font-medium ">
-              Password
-            </label>
-            <div class="mt-1">
-              <InputText
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  fluid
-                  class="w-full"
-              />
-            </div>
-            <Message v-if="$form.password?.invalid" severity="error" size="small" variant="simple" class="mt-1">
-              {{ $form.password?.error?.message }}
-            </Message>
+            <label for="interests">Interests</label>
+            <MultiSelect inputId="interests" name="interests" :options="tagsStore.options(TagCategory.INTEREST)"
+                         optionLabel="label" optionValue="value" filter display="chip"
+                         :selectionLimit="MAX_TAGS_PER_CATEGORY" placeholder="Select your interests" fluid/>
           </div>
 
           <div class="space-y-2">
-            <label for="age" class="block text-sm font-medium ">
-              Age
-            </label>
-            <div class="mt-1">
-              <InputText
-                  id="age"
-                  name="age"
-                  type="number"
-                  placeholder="Enter your age"
-                  fluid
-                  class="w-full"
-              />
-            </div>
-            <Message v-if="$form.age?.invalid" severity="error" size="small" variant="simple" class="mt-1">
-              {{ $form.age?.error?.message }}
-            </Message>
+            <label for="hobbies">Hobbies</label>
+            <MultiSelect inputId="hobbies" name="hobbies" :options="tagsStore.options(TagCategory.HOBBY)"
+                         optionLabel="label" optionValue="value" filter display="chip"
+                         :selectionLimit="MAX_TAGS_PER_CATEGORY" placeholder="Select your hobbies" fluid/>
           </div>
 
           <div class="space-y-2">
-            <label for="gender" class="block text-sm font-medium">
-              Gender
-            </label>
-            <Select
-                id="gender"
-                name="gender"
-                :options="genders"
-                optionLabel="name"
-                placeholder="Select a gender"
-                class="w-full"
-            />
-            <Message
-                v-if="$form.gender?.invalid"
-                severity="error"
-                size="small"
-                variant="simple"
-                class="mt-1"
-            >
-              {{ $form.gender?.error?.message }}
-            </Message>
-          </div>
-
-          <div class="space-y-2">
-            <label for="hobbies" class="block text-sm font-medium">
-              Hobbies
-            </label>
-            <MultiSelect
-                id="hobbies"
-                name="hobbies"
-                :options="hobbies"
-                optionLabel="name"
-                placeholder="Select your hobbies"
-                display="chip"
-                :maxSelectedLabels="4"
-                class="w-full"
-            />
-          </div>
-
-          <div class="space-y-2">
-            <label for="interests" class="block text-sm font-medium">
-              Interests
-            </label>
-            <MultiSelect
-                id="interests"
-                name="interests"
-                :options="interests"
-                optionLabel="name"
-                placeholder="Select your interests"
-                display="chip"
-                :maxSelectedLabels="4"
-                class="w-full"
-            />
-          </div>
-
-          <div class="space-y-2">
-            <label class="block text-sm font-medium">Address</label>
+            <label>Address</label>
+            <p class="hint">Only your city is shown to others. We use your zip code to find people nearby.</p>
             <div class="address-container space-y-4">
-              <!-- Street Address -->
               <div class="space-y-2">
-                <label for="street" class="block text-sm font-medium">
-                  Street & Number
-                </label>
+                <label for="street">Street and number <span class="optional">(optional)</span></label>
                 <InputGroup>
-                  <InputGroupAddon>
-                    <i class="pi pi-home"></i>
-                  </InputGroupAddon>
-                  <InputText
-                      id="street"
-                      name="street"
-                      type="text"
-                      placeholder="Enter street and number"
-                      fluid
-                  />
+                  <InputGroupAddon><i class="pi pi-home"></i></InputGroupAddon>
+                  <InputText id="street" name="street" placeholder="Main Street 1" fluid autocomplete="street-address"/>
                 </InputGroup>
-                <Message v-if="$form.street?.invalid" severity="error" size="small" variant="simple" class="mt-1">
-                  {{ $form.street?.error?.message }}
-                </Message>
               </div>
 
-              <!-- Zip Code and City -->
-              <div class="grid grid-cols-2 gap-4 zip-city">
+              <div class="grid grid-cols-2 gap-4 two-columns">
                 <div class="space-y-2">
-                  <label for="zipCode" class="block text-sm font-medium">
-                    Zip Code
-                  </label>
+                  <label for="zipCode">Zip code</label>
                   <InputGroup>
-                    <InputGroupAddon>
-                      <i class="pi pi-hashtag"></i>
-                    </InputGroupAddon>
-                    <InputText
-                        id="zipCode"
-                        name="zipCode"
-                        type="text"
-                        placeholder="12345"
-                        fluid
-                    />
+                    <InputGroupAddon><i class="pi pi-hashtag"></i></InputGroupAddon>
+                    <InputText id="zipCode" name="zipCode" placeholder="20095" fluid autocomplete="postal-code"/>
                   </InputGroup>
-                  <Message v-if="$form.zipCode?.invalid" severity="error" size="small" variant="simple" class="mt-1">
-                    {{ $form.zipCode?.error?.message }}
+                  <Message v-if="$form.zipCode?.invalid" severity="error" size="small" variant="simple">
+                    {{ $form.zipCode.error?.message }}
                   </Message>
                 </div>
 
                 <div class="space-y-2">
-                  <label for="city" class="block text-sm font-medium">
-                    City
-                  </label>
+                  <label for="city">City</label>
                   <InputGroup>
-                    <InputGroupAddon>
-                      <i class="pi pi-building"></i>
-                    </InputGroupAddon>
-                    <InputText
-                        id="city"
-                        name="city"
-                        type="text"
-                        placeholder="Your city"
-                        fluid
-                    />
+                    <InputGroupAddon><i class="pi pi-building"></i></InputGroupAddon>
+                    <InputText id="city" name="city" placeholder="Hamburg" fluid autocomplete="address-level2"/>
                   </InputGroup>
-                  <Message v-if="$form.city?.invalid" severity="error" size="small" variant="simple" class="mt-1">
-                    {{ $form.city?.error?.message }}
+                  <Message v-if="$form.city?.invalid" severity="error" size="small" variant="simple">
+                    {{ $form.city.error?.message }}
                   </Message>
                 </div>
               </div>
 
-              <!-- Country -->
               <div class="space-y-2">
-                <label for="country" class="block text-sm font-medium pt-2">
-                  Country
-                </label>
+                <label for="country">Country</label>
                 <InputGroup>
-                  <InputGroupAddon>
-                    <i class="pi pi-globe"></i>
-                  </InputGroupAddon>
-                  <InputText
-                      id="country"
-                      name="country"
-                      type="text"
-                      placeholder="Enter your country"
-                      fluid
-                  />
+                  <InputGroupAddon><i class="pi pi-globe"></i></InputGroupAddon>
+                  <InputText id="country" name="country" placeholder="DE" fluid autocomplete="country"/>
                 </InputGroup>
-                <Message v-if="$form.country?.invalid" severity="error" size="small" variant="simple" class="mt-1">
-                  {{ $form.country?.error?.message }}
+                <Message v-if="$form.country?.invalid" severity="error" size="small" variant="simple">
+                  {{ $form.country.error?.message }}
                 </Message>
               </div>
             </div>
           </div>
 
           <div class="pt-4">
-            <Button
-                type="submit"
-                severity="primary"
-                label="Register"
-                class="w-full py-3 text-base font-medium"
-            />
+            <Button type="submit" label="Register" :loading="submitting" class="w-full py-3 text-base font-medium"/>
           </div>
         </Form>
 
         <div class="mt-6 text-center">
-          <span class="text-sm ">Already have an account? </span>
-          <Button
-              label="Sign in here"
-              link
-              @click="toLogin"
-              class="text-sm font-medium"
-          />
+          <span class="text-sm">Already have an account? </span>
+          <Button label="Sign in here" link @click="router.push('/login')" class="text-sm font-medium"/>
         </div>
       </div>
     </div>
@@ -424,43 +261,26 @@ const toLogin = () => {
   margin-top: 0.5rem;
 }
 
-:deep(.p-inputtext) {
-  width: 100% !important;
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-:deep(.p-multiselect) {
-  width: 100%;
-}
-
-:deep(.p-button) {
-  width: 100%;
-  justify-content: center;
-}
-
 label {
   display: block;
   margin-bottom: 0.25rem;
   font-weight: 500;
 }
 
-:deep(.p-inputtext) {
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
+.optional,
+.hint {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: rgba(235, 235, 235, 0.55);
 }
 
-:deep(.p-inputgroupaddon) {
-  border: 1px solid #d1d5db;
-  border-right: none!important;
+.hint {
+  margin: 0;
 }
 
-:deep(.p-inputtext:focus) {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+:deep(.p-button) {
+  width: 100%;
+  justify-content: center;
 }
 
 :deep(.p-message) {
@@ -472,19 +292,21 @@ label {
   margin: 0 auto;
 }
 
+.two-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
 .address-container {
   padding: 1rem;
   border-radius: 0.5rem;
   border: 1px solid var(--p-primary-color);
 }
 
-
-:deep(.p-inputgroup .p-inputtext) {
-  border-left: none;
-}
-
-.zip-city {
-  padding-left: 10px;
-  padding-top: 15px;
+@media (max-width: 480px) {
+  .two-columns {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup>
 import {computed} from 'vue'
 import {useChatStore} from '@/stores/chat.js'
+import defaultAvatar from '@/assets/avatar.jpg'
 
 defineProps({
   selectedChatId: {
@@ -19,7 +20,7 @@ const chats = computed(() => {
     {
       id: 1,
       name: 'Sarah Weber',
-      avatar: '/src/assets/avatar.jpg',
+      avatar: defaultAvatar,
       lastMessage: 'Hast du Lust auf einen Kaffee? ☕',
       timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 min ago
       unreadCount: 2,
@@ -28,7 +29,7 @@ const chats = computed(() => {
     {
       id: 2,
       name: 'Julia Schmidt',
-      avatar: '/src/assets/avatar.jpg',
+      avatar: defaultAvatar,
       lastMessage: 'Das war ein toller Abend! 😊',
       timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
       unreadCount: 0,
@@ -37,7 +38,7 @@ const chats = computed(() => {
     {
       id: 3,
       name: 'Lisa Müller',
-      avatar: '/src/assets/avatar.jpg',
+      avatar: defaultAvatar,
       lastMessage: 'Bis später! 👋',
       timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
       unreadCount: 1,

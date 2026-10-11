@@ -1,306 +1,166 @@
 <script setup>
-import { computed } from 'vue'
+import {computed} from 'vue'
+import defaultAvatar from '@/assets/avatar.jpg'
+import {useSwipe} from '@/composables/useSwipe.js'
+import {useTagsStore} from '@/stores/tags.js'
 
 const props = defineProps({
   profile: {
     type: Object,
     required: true
+  },
+  selected: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['view-profile', 'like', 'pass'])
+const emit = defineEmits(['select', 'swipe'])
 
-const age = computed(() => {
-  if (props.profile.birthDate) {
-    const today = new Date()
-    const birth = new Date(props.profile.birthDate)
-    return today.getFullYear() - birth.getFullYear()
+const swipe = useSwipe({
+  onTap: () => emit('select', props.profile),
+  onSwipe: (direction) => {
+    emit('select', props.profile)
+    emit('swipe', direction)
+    // the parent removes the tile and animates it out from here; if it doesn't, snap back
+    setTimeout(() => (swipe.offset.value = 0), 0)
   }
-  return props.profile.age || 'N/A'
 })
 
-const displayInterests = computed(() => {
-  return props.profile.interests?.slice(0, 3) || []
+const tagsStore = useTagsStore()
+
+const tags = computed(() => [...(props.profile.interests || []), ...(props.profile.hobbies || [])]
+    .slice(0, 2)
+    .map(slug => tagsStore.label(slug)))
+
+const location = computed(() => {
+  const {city, distanceKm} = props.profile
+  if (distanceKm != null) return city ? `${city} · ${distanceKm} km` : `${distanceKm} km away`
+  return city || ''
 })
 
-const handleViewProfile = () => {
-  emit('view-profile', props.profile)
-}
-
-const handleLike = () => {
-  emit('like', props.profile)
-}
-
-const handlePass = () => {
-  emit('pass', props.profile)
-}
+const dragStyle = computed(() => swipe.offset.value
+    ? {transform: `translateX(${swipe.offset.value}px) rotate(${swipe.offset.value / 14}deg)`}
+    : {})
 </script>
 
 <template>
-  <div class="profile-tile">
-    <div class="tile-header">
-      <img
-        :src="profile.avatar || '/src/assets/avatar.jpg'"
-        :alt="profile.name"
-        class="tile-avatar"
-      />
-      <div class="online-indicator" v-if="profile.isOnline"></div>
-    </div>
+  <div
+      class="profile-tile"
+      :class="{selected, dragging: swipe.dragging.value}"
+      :style="dragStyle"
+      :data-ref="profile.referenceId"
+      tabindex="0"
+      role="button"
+      :aria-pressed="selected"
+      :aria-label="`${profile.name}, ${profile.age}`"
+      @focus="emit('select', profile)"
+      v-on="swipe.listeners"
+  >
+    <span class="swipe-stamp like" :style="{opacity: Math.max(0, swipe.progress())}" aria-hidden="true">Like</span>
+    <span class="swipe-stamp pass" :style="{opacity: Math.max(0, -swipe.progress())}" aria-hidden="true">Pass</span>
 
-    <div class="tile-content">
-      <div class="tile-info">
-        <h3 class="tile-name">{{ profile.name }}</h3>
-        <p class="tile-details">{{ age }} years • {{ profile.location || 'Unknown' }}</p>
-
-        <div class="tile-bio" v-if="profile.bio">
-          <p>{{ profile.bio.length > 80 ? profile.bio.substring(0, 80) + '...' : profile.bio }}</p>
-        </div>
-
-        <div class="tile-interests" v-if="displayInterests.length > 0">
-          <span
-            v-for="interest in displayInterests"
-            :key="interest"
-            class="interest-tag-small"
-          >
-            {{ interest }}
-          </span>
-          <span v-if="profile.interests?.length > 3" class="more-interests">
-            +{{ profile.interests.length - 3 }}
-          </span>
-        </div>
-
-        <div class="tile-stats">
-          <div class="stat-badge" v-if="profile.distance">
-            <i class="pi pi-map-marker"></i>
-            <span>{{ profile.distance }}km</span>
-          </div>
-          <div class="stat-badge" v-if="profile.compatibility">
-            <i class="pi pi-heart"></i>
-            <span>{{ profile.compatibility }}%</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="tile-actions">
-        <button class="action-btn pass-btn" @click="handlePass" title="Pass">
-          <i class="pi pi-times"></i>
-        </button>
-        <button class="action-btn view-btn" @click="handleViewProfile" title="Show profile">
-          <i class="pi pi-eye"></i>
-        </button>
-        <button class="action-btn like-btn" @click="handleLike" title="Like">
-          <i class="pi pi-heart"></i>
-        </button>
-      </div>
+    <img :src="profile.photo || defaultAvatar" :alt="profile.name" class="tile-avatar" draggable="false"/>
+    <h3 class="tile-name">{{ profile.name }}, {{ profile.age }}</h3>
+    <p class="tile-location" v-if="location">{{ location }}</p>
+    <div class="tile-tags" v-if="tags.length">
+      <span v-for="tag in tags" :key="tag" class="tile-tag">{{ tag }}</span>
     </div>
   </div>
 </template>
 
 <style scoped>
 .profile-tile {
-  background: linear-gradient(145deg, #34495e, #2c3e50);
-  border: 1px solid #34495e;
-  border-radius: 16px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  cursor: pointer;
   position: relative;
-  max-width: 320px;
   width: 100%;
+  max-width: 320px;
+  padding: 24px 16px 20px;
+  text-align: center;
+  background: linear-gradient(145deg, #34495e, #2c3e50);
+  border: 2px solid #34495e;
+  border-radius: 16px;
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-y;
+  outline: none;
+  transition: border-color .2s ease, transform .35s cubic-bezier(.34, 1.56, .64, 1);
 }
 
-.profile-tile:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+.profile-tile:hover,
+.profile-tile:focus-visible {
+  border-color: rgba(255, 167, 38, .5);
+}
+
+.profile-tile.selected {
   border-color: #ffa726;
 }
 
-.tile-header {
-  position: relative;
-  padding: 20px 20px 0;
-  text-align: center;
+.profile-tile.dragging {
+  cursor: grabbing;
+  transition: border-color .2s ease;
 }
 
 .tile-avatar {
-  width: 120px;
-  height: 120px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
+  border: 4px solid rgba(255, 255, 255, .1);
+  pointer-events: none;
 }
 
-.profile-tile:hover .tile-avatar {
+.profile-tile.selected .tile-avatar {
   border-color: #ffa726;
-}
-
-.online-indicator {
-  position: absolute;
-  top: 25px;
-  right: 25px;
-  width: 12px;
-  height: 12px;
-  background: #66bb6a;
-  border-radius: 50%;
-  border: 2px solid white;
-}
-
-.tile-content {
-  padding: 16px 20px 20px;
-}
-
-.tile-info {
-  margin-bottom: 16px;
 }
 
 .tile-name {
+  margin: 12px 0 2px;
   font-size: 20px;
   font-weight: 600;
-  margin: 0 0 4px 0;
-  color: rgba(235, 235, 235, 0.9);
-  text-align: center;
+  color: rgba(235, 235, 235, .9);
 }
 
-.tile-details {
+.tile-location {
+  margin: 0 0 12px;
   font-size: 14px;
-  color: rgba(235, 235, 235, 0.64);
-  margin: 0 0 12px 0;
-  text-align: center;
+  color: rgba(235, 235, 235, .64);
 }
 
-.tile-bio {
-  margin-bottom: 12px;
-}
-
-.tile-bio p {
-  font-size: 13px;
-  line-height: 1.4;
-  color: rgba(235, 235, 235, 0.7);
-  margin: 0;
-  text-align: center;
-}
-
-.tile-interests {
+.tile-tags {
   display: flex;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 6px;
-  justify-content: center;
-  margin-bottom: 16px;
 }
 
-.interest-tag-small {
-  background: rgba(33, 150, 243, 0.2);
-  color: #64b5f6;
-  padding: 2px 8px;
+.tile-tag {
+  padding: 2px 10px;
   border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-  border: 1px solid rgba(33, 150, 243, 0.3);
-}
-
-.more-interests {
-  background: rgba(158, 158, 158, 0.2);
-  color: #bdbdbd;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.tile-stats {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.stat-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
   font-size: 12px;
-  color: rgba(235, 235, 235, 0.64);
-  background: rgba(255, 255, 255, 0.05);
-  padding: 4px 8px;
-  border-radius: 8px;
+  color: #ffcc80;
+  background: rgba(255, 167, 38, .12);
 }
 
-.stat-badge i {
-  font-size: 10px;
-}
-
-.tile-actions {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-}
-
-.action-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+.swipe-stamp {
+  position: absolute;
+  top: 14px;
+  padding: 2px 10px;
   border: 2px solid;
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 6px;
   font-size: 16px;
-  transition: all 0.3s ease;
+  font-weight: 700;
+  pointer-events: none;
 }
 
-.pass-btn {
-  border-color: #ef5350;
-  color: #ef5350;
+.swipe-stamp.like {
+  right: 14px;
+  color: #ff4d79;
+  transform: rotate(12deg);
 }
 
-.pass-btn:hover {
-  background: #ef5350;
-  color: white;
-  transform: scale(1.1);
-}
-
-.view-btn {
-  border-color: #ffa726;
-  color: #ffa726;
-}
-
-.view-btn:hover {
-  background: #ffa726;
-  color: white;
-  transform: scale(1.1);
-}
-
-.like-btn {
-  border-color: #66bb6a;
-  color: #66bb6a;
-}
-
-.like-btn:hover {
-  background: #66bb6a;
-  color: white;
-  transform: scale(1.1);
-}
-
-/* Responsive Design */
-@media (max-width: 480px) {
-  .profile-tile {
-    max-width: 280px;
-  }
-
-  .tile-avatar {
-    width: 100px;
-    height: 100px;
-  }
-
-  .tile-name {
-    font-size: 18px;
-  }
-
-  .action-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 14px;
-  }
+.swipe-stamp.pass {
+  left: 14px;
+  color: #b0bec5;
+  transform: rotate(-12deg);
 }
 </style>
