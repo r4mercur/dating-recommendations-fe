@@ -15,10 +15,13 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select', 'swipe'])
+const emit = defineEmits(['select', 'swipe', 'open'])
+
+/** a tap selects the tile, a tap on the already selected tile opens the profile */
+let wasSelected = false
 
 const swipe = useSwipe({
-  onTap: () => emit('select', props.profile),
+  onTap: () => emit(wasSelected ? 'open' : 'select', props.profile),
   onSwipe: (direction) => {
     emit('select', props.profile)
     emit('swipe', direction)
@@ -39,6 +42,20 @@ const location = computed(() => {
   return city || ''
 })
 
+const listeners = {
+  ...swipe.listeners,
+  pointerdown: (event) => {
+    // read before the focus of this press selects the tile
+    wasSelected = props.selected
+    swipe.listeners.pointerdown(event)
+  },
+}
+
+const commonLabel = computed(() => {
+  const count = props.profile.commonCount
+  return count ? `${count} in common` : null
+})
+
 const dragStyle = computed(() => swipe.offset.value
     ? {transform: `translateX(${swipe.offset.value}px) rotate(${swipe.offset.value / 14}deg)`}
     : {})
@@ -53,19 +70,28 @@ const dragStyle = computed(() => swipe.offset.value
       tabindex="0"
       role="button"
       :aria-pressed="selected"
-      :aria-label="`${profile.name}, ${profile.age}`"
+      :aria-label="`${profile.name}, ${profile.age}. Press Enter to open the profile`"
       @focus="emit('select', profile)"
-      v-on="swipe.listeners"
+      @keydown.enter.self.prevent="emit('open', profile)"
+      v-on="listeners"
   >
     <span class="swipe-stamp like" :style="{opacity: Math.max(0, swipe.progress())}" aria-hidden="true">Like</span>
     <span class="swipe-stamp pass" :style="{opacity: Math.max(0, -swipe.progress())}" aria-hidden="true">Pass</span>
 
-    <img :src="profile.photo || defaultAvatar" :alt="profile.name" class="tile-avatar" draggable="false"/>
+    <span class="avatar-wrap">
+      <img :src="profile.photo || defaultAvatar" :alt="profile.name" class="tile-avatar" draggable="false"/>
+      <span v-if="profile.online" class="online-dot" title="Online"></span>
+    </span>
     <h3 class="tile-name">{{ profile.name }}, {{ profile.age }}</h3>
     <p class="tile-location" v-if="location">{{ location }}</p>
+    <p v-if="commonLabel" class="tile-common"><i class="pi pi-sparkles" aria-hidden="true"></i>{{ commonLabel }}</p>
     <div class="tile-tags" v-if="tags.length">
       <span v-for="tag in tags" :key="tag" class="tile-tag">{{ tag }}</span>
     </div>
+    <p v-if="profile.anthem" class="tile-anthem">
+      <i class="pi pi-headphones" aria-hidden="true"></i>
+      <span>{{ profile.anthem.name }} · {{ profile.anthem.artists.join(', ') }}</span>
+    </p>
   </div>
 </template>
 
@@ -73,6 +99,7 @@ const dragStyle = computed(() => swipe.offset.value
 .profile-tile {
   position: relative;
   width: 100%;
+  min-width: 0;
   max-width: 320px;
   padding: 24px 16px 20px;
   text-align: center;
@@ -98,6 +125,52 @@ const dragStyle = computed(() => swipe.offset.value
 .profile-tile.dragging {
   cursor: grabbing;
   transition: border-color .2s ease;
+}
+
+.avatar-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.online-dot {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #66bb6a;
+  border: 3px solid #2c3e50;
+}
+
+.tile-common {
+  display: inline-flex;
+  margin: 0 0 10px;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #412402;
+  background: #ffa726;
+}
+
+.tile-anthem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #9fe1cb;
+}
+
+.tile-anthem span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tile-avatar {

@@ -9,6 +9,11 @@ const props = defineProps({
   profile: {
     type: Object,
     default: null
+  },
+  /** full profile (GET /api/user) when already loaded: suggestions then use songs, games and what you share */
+  details: {
+    type: Object,
+    default: null
   }
 })
 
@@ -19,15 +24,27 @@ const message = ref('')
 const error = ref(null)
 const textarea = ref(null)
 
+/** up to three suggestions, the most personal first: shared artists and games, the profile song, tags */
 const suggestions = computed(() => {
   if (!props.profile) return []
-  const [first, second] = [...(props.profile.interests || []), ...(props.profile.hobbies || [])]
-      .map(slug => tagsStore.label(slug))
+  const profile = {...props.profile, ...(props.details ?? {})}
+  const common = profile.common ?? {}
+  const sharedGame = (common.games ?? [])
+      .map(id => (profile.games ?? []).find(game => game.igdbId === id))
+      .find(Boolean)
+  const anthem = profile.anthem ?? (profile.songs ?? []).find(song => song.anthem)
+  const tags = [...(common.interests ?? []), ...(common.hobbies ?? []),
+    ...(profile.interests || []), ...(profile.hobbies || [])]
+  const [first, second] = [...new Set(tags)].map(slug => tagsStore.label(slug))
+
   return [
+    common.artists?.[0] && `You listen to ${common.artists[0]} too? Which song should I hear first?`,
+    sharedGame && `Up for a round of ${sharedGame.name} sometime?`,
+    anthem && `${anthem.name} as your profile song? Great taste`,
     first && `You're into ${first} too? Tell me more`,
     second && `${second} this weekend?`,
     'Your smile is contagious',
-  ].filter(Boolean)
+  ].filter(Boolean).slice(0, 3)
 })
 
 watch(() => props.profile, async (profile) => {

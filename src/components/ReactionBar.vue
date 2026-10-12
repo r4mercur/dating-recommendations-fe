@@ -16,13 +16,13 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['react'])
+const emit = defineEmits(['react', 'open'])
 
 const root = ref(null)
 const message = ref(null)
 
 const hint = computed(() => message.value
-    ?? (props.selectedName ? `Selected: ${props.selectedName}` : 'Tap or swipe a profile'))
+    ?? (props.selectedName ? `Selected: ${props.selectedName}, tap again to view` : 'Tap or swipe a profile'))
 
 const actions = [
   {type: ReactionType.PASS, label: 'Pass', icon: 'pi-times'},
@@ -52,6 +52,10 @@ defineExpose({refuse, celebrate, button})
 <template>
   <div class="reaction-bar" ref="root">
     <span class="reaction-hint" :class="{warn: message}" aria-live="polite">{{ hint }}</span>
+    <button class="reaction-btn view" data-type="VIEW" title="View profile" @click="emit('open')">
+      <i class="pi pi-user" aria-hidden="true"></i>
+      <span class="label">Profile</span>
+    </button>
     <button
         v-for="action in actions"
         :key="action.type"
@@ -123,6 +127,7 @@ defineExpose({refuse, celebrate, button})
   outline-offset: 2px;
 }
 
+.view { background: transparent; color: #ffcc80; border: 1px solid #5f7a94; }
 .pass { background: #3d566e; color: #ef9a9a; }
 .compliment { background: #0f6e56; color: #e1f5ee; }
 .super_like { background: #185fa5; color: #e6f1fb; }

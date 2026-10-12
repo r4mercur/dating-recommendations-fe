@@ -1,0 +1,196 @@
+/* shared styles of SongEditor and GameEditor, global but limited to .catalog-editor */
+.catalog-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.catalog-editor .chosen,
+.catalog-editor .results {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.catalog-editor .results {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid #34495e;
+    border-radius: 10px;
+}
+
+.catalog-editor .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.catalog-editor .chosen .row {
+    background: rgba(255, 255, 255, .03);
+}
+
+.catalog-editor .cover {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.catalog-editor .cover.tall {
+    height: 53px;
+}
+
+.catalog-editor .cover.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(235, 235, 235, .6);
+    background: #34495e;
+}
+
+.catalog-editor .text {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.catalog-editor .name,
+.catalog-editor .sub {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.catalog-editor .name {
+    font-size: 14px;
+    color: rgba(235, 235, 235, .9);
+}
+
+.catalog-editor .sub {
+    font-size: 12px;
+    color: rgba(235, 235, 235, .55);
+}
+
+.catalog-editor .icon-btn {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border: 1px solid #34495e;
+    border-radius: 6px;
+    color: rgba(235, 235, 235, .75);
+    background: transparent;
+    cursor: pointer;
+}
+
+.catalog-editor .icon-btn:disabled {
+    opacity: .35;
+    cursor: default;
+}
+
+.catalog-editor .icon-btn:not(:disabled):hover {
+    border-color: #ffa726;
+    color: #ffa726;
+}
+
+.catalog-editor .icon-btn.anthem.on {
+    border-color: #5dcaa5;
+    color: #5dcaa5;
+}
+
+.catalog-editor .add-btn {
+    flex-shrink: 0;
+    height: 32px;
+    padding: 0 14px;
+    border: 1px solid #ffa726;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffa726;
+    background: transparent;
+    cursor: pointer;
+}
+
+.catalog-editor .add-btn:disabled {
+    border-color: #34495e;
+    color: rgba(235, 235, 235, .45);
+    cursor: default;
+}
+
+.catalog-editor .search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.catalog-editor .search > .pi {
+    position: absolute;
+    z-index: 1;
+    color: rgba(235, 235, 235, .5);
+}
+
+.catalog-editor .search > .pi-search {
+    left: 12px;
+}
+
+.catalog-editor .search > .pi-spinner {
+    right: 12px;
+}
+
+.catalog-editor .search input {
+    padding-left: 36px;
+}
+
+.catalog-editor .hint,
+.catalog-editor .error {
+    margin: 0;
+    font-size: 13px;
+}
+
+.catalog-editor .hint {
+    color: rgba(235, 235, 235, .55);
+}
+
+.catalog-editor .error {
+    color: #f7a1a1;
+}
+
+.catalog-editor .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+}
+
+.catalog-editor .subheading {
+    margin: 8px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(235, 235, 235, .75);
+}
+
+.catalog-editor .steam-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+/* the link field keeps a usable width, the button moves to the next line on narrow screens */
+.catalog-editor .steam-form input {
+    flex: 1 1 200px;
+    min-width: 0;
+}
+
+.catalog-editor .steam-form button {
+    white-space: nowrap;
+}

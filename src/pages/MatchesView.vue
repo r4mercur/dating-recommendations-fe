@@ -4,6 +4,7 @@ import {useToast} from 'primevue/usetoast'
 import ProfileTile from '@/components/ProfileTile.vue'
 import ReactionBar from '@/components/ReactionBar.vue'
 import ComplimentSheet from '@/components/modal/ComplimentSheet.vue'
+import ProfileDetailSheet from '@/components/modal/ProfileDetailSheet.vue'
 import {useRecommendationsStore} from '@/stores/recommendation.js'
 import {ReactionType, useReactionsStore} from '@/stores/reactions.js'
 import {useTagsStore} from '@/stores/tags.js'
@@ -19,6 +20,10 @@ const sentinel = ref(null)
 const bar = ref(null)
 const selectedId = ref(null)
 const complimentFor = ref(null)
+/** full profile of complimentFor, when the compliment was started from the profile view */
+const complimentDetails = ref(null)
+const detailFor = ref(null)
+const detailSheet = ref(null)
 const busy = ref(false)
 
 /** how each removed tile leaves the grid, read by the leave transition */
@@ -82,9 +87,37 @@ function onSwipe(profile, direction) {
   react(direction === 'right' ? ReactionType.LIKE : ReactionType.PASS, {swiped: true})
 }
 
+/** Opens the full profile of the given or the selected tile. */
+function openProfile(profile = selected.value) {
+  if (!profile) {
+    bar.value?.refuse('Select a profile first')
+    return
+  }
+  select(profile)
+  detailFor.value = profile
+}
+
+/** A reaction from the profile view: close it first, so the tile visibly leaves the grid. */
+async function reactFromDetail(type) {
+  const profile = detailFor.value
+  const details = detailSheet.value?.details ?? null
+  detailFor.value = null
+  select(profile)
+  await sleep(prefersReducedMotion() ? 0 : 260)
+  if (type === ReactionType.COMPLIMENT && reactionsStore.remaining(type) > 0) {
+    complimentDetails.value = details
+  }
+  react(type)
+}
+
+function closeCompliment() {
+  complimentFor.value = null
+  complimentDetails.value = null
+}
+
 function sendCompliment(message) {
   const profile = complimentFor.value
-  complimentFor.value = null
+  closeCompliment()
   send(profile, ReactionType.COMPLIMENT, message, false)
 }
 
@@ -206,7 +239,7 @@ function onLeave(element, done) {
 }
 
 function onKeydown(event) {
-  if (!selected.value || complimentFor.value || reactionsStore.celebratedMatch) return
+  if (!selected.value || complimentFor.value || detailFor.value || reactionsStore.celebratedMatch) return
   if (event.altKey || event.ctrlKey || event.metaKey) return
   if (event.target.closest?.('input, textarea, select, [contenteditable="true"]')) return
   const type = {
@@ -258,7 +291,7 @@ onBeforeUnmount(() => {
     <template v-else>
       <div class="matches-header">
         <h1>Discover</h1>
-        <p class="matches-subtitle">Swipe right to like, left to pass. Arrow keys work too.</p>
+        <p class="matches-subtitle">Swipe right to like, left to pass. Tap a selected profile to see more.</p>
       </div>
 
       <div v-if="profiles.length === 0" class="no-matches">
@@ -284,6 +317,7 @@ onBeforeUnmount(() => {
               :profile="profile"
               :selected="profile.referenceId === selectedId"
               @select="select"
+              @open="openProfile"
               @swipe="direction => onSwipe(profile, direction)"
           />
         </TransitionGroup>
@@ -296,10 +330,14 @@ onBeforeUnmount(() => {
           :selected-name="selected?.name ?? null"
           :remaining="remaining"
           @react="react"
+          @open="openProfile()"
       />
     </template>
 
-    <ComplimentSheet :profile="complimentFor" @send="sendCompliment" @cancel="complimentFor = null"/>
+    <ComplimentSheet :profile="complimentFor" :details="complimentDetails" @send="sendCompliment"
+                     @cancel="closeCompliment"/>
+    <ProfileDetailSheet ref="detailSheet" :profile="detailFor" :remaining="remaining"
+                        @react="reactFromDetail" @close="detailFor = null"/>
   </div>
 </template>
 

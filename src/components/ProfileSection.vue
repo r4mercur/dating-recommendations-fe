@@ -68,6 +68,7 @@ async function submit() {
 
 <style scoped>
 .info-card {
+  min-width: 0;
   border-radius: 8px;
   padding: 20px;
   border: 1px solid #34495e;

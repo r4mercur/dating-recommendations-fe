@@ -12,6 +12,8 @@ export const BIO_MAX_LENGTH = 1000;
 export const MAX_TAGS_PER_CATEGORY = 20;
 export const PASSWORD_MIN_LENGTH = 8;
 export const MAX_DISTANCE_KM = 500;
+export const MAX_SONGS = 4;
+export const MAX_GAMES = 6;
 
 export function genderLabel(value) {
     return GENDERS.find(gender => gender.value === value)?.label ?? value;

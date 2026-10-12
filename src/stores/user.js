@@ -112,6 +112,24 @@ export const useUserStore = defineStore('user', {
             this.setUser({...this.user, preferences: saved});
             return saved;
         },
+        /** Replaces the profile songs: [{spotifyTrackId, anthem}], the order is the position. */
+        async saveSongs(songs) {
+            const saved = await apiFetch('/api/me/songs', {
+                method: 'PUT',
+                body: JSON.stringify(songs.map(({spotifyTrackId, anthem}) => ({spotifyTrackId, anthem: !!anthem})))
+            });
+            this.setUser({...this.user, songs: saved});
+            return saved;
+        },
+        /** Replaces the favorite games: [{igdbId}], the order is the position. */
+        async saveGames(games) {
+            const saved = await apiFetch('/api/me/games', {
+                method: 'PUT',
+                body: JSON.stringify(games.map(({igdbId}) => ({igdbId})))
+            });
+            this.setUser({...this.user, games: saved});
+            return saved;
+        },
         async uploadAvatar(file) {
             if (this.user == null) {
                 return new Error('User not logged in');

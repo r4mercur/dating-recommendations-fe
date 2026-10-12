@@ -13,6 +13,11 @@ import {useReactionsStore} from '@/stores/reactions.js'
 import {TagCategory, useTagsStore} from '@/stores/tags.js'
 import ProfileSection from '@/components/ProfileSection.vue'
 import ProfileUploadModal from '@/components/modal/ProfileUploadModal.vue'
+import SongList from '@/components/profile/SongList.vue'
+import SongEditor from '@/components/profile/SongEditor.vue'
+import SpotifyEmbed from '@/components/profile/SpotifyEmbed.vue'
+import GameGrid from '@/components/profile/GameGrid.vue'
+import GameEditor from '@/components/profile/GameEditor.vue'
 import defaultAvatar from '@/assets/avatar.jpg'
 import {
   BIO_MAX_LENGTH,
@@ -46,6 +51,16 @@ const draft = reactive({
   address: {street: '', zipCode: '', city: '', country: ''},
   tags: {interests: [], hobbies: []},
   preferences: {seekingGenders: [], ageRange: [MIN_AGE, MAX_AGE], maxDistanceKm: 50},
+  songs: [],
+  games: [],
+})
+
+/** track shown in the Spotify player, the profile song by default */
+const playingTrackId = ref(null)
+const shownTrackId = computed(() => {
+  const songs = user.value?.songs || []
+  if (songs.some(song => song.spotifyTrackId === playingTrackId.value)) return playingTrackId.value
+  return (songs.find(song => song.anthem) ?? songs[0])?.spotifyTrackId ?? null
 })
 
 const birthDateText = computed(() => user.value?.birthDate
@@ -102,6 +117,24 @@ async function savePreferences() {
   if (!seekingGenders.length) throw new Error('Choose at least one gender.')
   await userStore.updatePreferences({seekingGenders, minAge: ageRange[0], maxAge: ageRange[1], maxDistanceKm})
   afterMatchingChange()
+}
+
+async function saveSongs() {
+  await userStore.saveSongs(draft.songs)
+  afterMatchingChange()
+}
+
+async function saveGames() {
+  await userStore.saveGames(draft.games)
+  afterMatchingChange()
+}
+
+function editSongs() {
+  draft.songs = (user.value.songs || []).map(song => ({...song}))
+}
+
+function editGames() {
+  draft.games = (user.value.games || []).map(game => ({...game}))
 }
 
 function editBio() {
@@ -300,6 +333,26 @@ onMounted(() => {
           </template>
         </ProfileSection>
 
+        <ProfileSection title="Music" icon="pi-headphones" :save="saveSongs" @edit="editSongs">
+          <template v-if="user.songs?.length">
+            <SpotifyEmbed v-if="shownTrackId" :trackId="shownTrackId" title="Your profile song on Spotify"/>
+            <SongList :songs="user.songs" playable :activeTrackId="shownTrackId" class="song-list"
+                      @play="song => playingTrackId = song.spotifyTrackId"/>
+          </template>
+          <p v-else class="empty">Add your profile song and favorite tracks. Shared artists show up as things in common.</p>
+          <template #edit>
+            <SongEditor v-model="draft.songs"/>
+          </template>
+        </ProfileSection>
+
+        <ProfileSection title="Favorite games" icon="pi-th-large" :save="saveGames" @edit="editGames">
+          <GameGrid v-if="user.games?.length" :games="user.games"/>
+          <p v-else class="empty">Show what you play. You can also pick games from your Steam library.</p>
+          <template #edit>
+            <GameEditor v-model="draft.games"/>
+          </template>
+        </ProfileSection>
+
         <ProfileSection title="Who you're looking for" icon="pi-search" :save="savePreferences" @edit="editPreferences">
           <dl class="info-list" v-if="preferencesText">
             <div class="info-item"><dt>Gender</dt><dd>{{ preferencesText.genders }}</dd></div>
@@ -464,6 +517,8 @@ onMounted(() => {
 
 .info-grid {
   display: grid;
+  /* minmax(0, …): long content (e.g. song titles in search results) is truncated instead of widening the column */
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
 }
 
@@ -506,6 +561,10 @@ onMounted(() => {
 }
 
 .hint {
+  margin-top: 12px;
+}
+
+.song-list {
   margin-top: 12px;
 }
 
