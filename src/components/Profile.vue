@@ -1,11 +1,7 @@
 <script setup>
 import {computed, onMounted, reactive, ref} from 'vue'
-import DatePicker from 'primevue/datepicker'
-import InputText from 'primevue/inputtext'
-import MultiSelect from 'primevue/multiselect'
-import Select from 'primevue/select'
-import Slider from 'primevue/slider'
-import Textarea from 'primevue/textarea'
+import MultiSelect from '@/components/ui/MultiSelect.vue'
+import RangeSlider from '@/components/ui/RangeSlider.vue'
 import {apiFetch} from '@/api.js'
 import {useUserStore} from '@/stores/user'
 import {useRecommendationsStore} from '@/stores/recommendation.js'
@@ -40,14 +36,15 @@ const tagsStore = useTagsStore()
 const showUploadModal = ref(false)
 const user = computed(() => userStore.user)
 const avatar = computed(() => userStore.avatar)
-const maxBirthDate = latestBirthDate()
+/** latest birth date that is old enough, yyyy-MM-dd like the value of the date field */
+const maxBirthDate = toIsoDate(latestBirthDate())
 
 const stats = reactive({matches: null, chats: null, likes: null})
 
 /** one draft per section, filled when the section switches to edit mode */
 const draft = reactive({
   bio: '',
-  basics: {name: '', birthDate: null, gender: null},
+  basics: {name: '', birthDate: '', gender: null},
   address: {street: '', zipCode: '', city: '', country: ''},
   tags: {interests: [], hobbies: []},
   preferences: {seekingGenders: [], ageRange: [MIN_AGE, MAX_AGE], maxDistanceKm: 50},
@@ -94,7 +91,7 @@ async function saveBasics() {
   if (!name.trim()) throw new Error('Name is required.')
   if (!birthDate) throw new Error('Birth date is required.')
   if (birthDate > maxBirthDate) throw new Error(`You need to be at least ${MIN_AGE}.`)
-  await userStore.updateUser({name: name.trim(), birthDate: toIsoDate(birthDate), gender})
+  await userStore.updateUser({name: name.trim(), birthDate, gender})
   afterMatchingChange()
 }
 
@@ -142,7 +139,7 @@ function editBio() {
 }
 
 function editBasics() {
-  draft.basics = {name: user.value.name, birthDate: fromIsoDate(user.value.birthDate), gender: user.value.gender}
+  draft.basics = {name: user.value.name, birthDate: user.value.birthDate ?? '', gender: user.value.gender}
 }
 
 function editAddress() {
@@ -197,7 +194,7 @@ onMounted(() => {
       <div class="avatar-section">
         <button class="avatar-button" type="button" @click="showUploadModal = true" title="Change profile picture">
           <img :src="avatar || defaultAvatar" :alt="user.name" class="profile-avatar"/>
-          <span class="avatar-overlay"><i class="pi pi-camera" aria-hidden="true"></i> Change</span>
+          <span class="avatar-overlay"><i class="icon icon-camera" aria-hidden="true"></i> Change</span>
         </button>
         <h1 class="profile-name">{{ user.name }}</h1>
         <p class="profile-subline">
@@ -211,15 +208,15 @@ onMounted(() => {
 
       <div class="profile-details">
         <div class="detail-item">
-          <i class="pi pi-envelope"></i>
+          <i class="icon icon-envelope"></i>
           <span>{{ user.email }}</span>
         </div>
         <div class="detail-item" v-if="user.gender">
-          <i class="pi pi-user"></i>
+          <i class="icon icon-user"></i>
           <span>{{ genderLabel(user.gender) }}</span>
         </div>
         <div class="detail-item" v-if="user.status && user.status !== 'ACTIVE'">
-          <i class="pi pi-eye-slash"></i>
+          <i class="icon icon-eye-slash"></i>
           <span>Profile hidden ({{ user.status.toLowerCase() }})</span>
         </div>
       </div>
@@ -231,7 +228,7 @@ onMounted(() => {
       </div>
 
       <div class="info-grid">
-        <ProfileSection title="Activity" icon="pi-chart-bar">
+        <ProfileSection title="Activity" icon="icon-chart-bar">
           <div class="stats-grid">
             <router-link to="/matches" class="stat-item">
               <span class="stat-number">{{ stats.matches ?? '–' }}</span>
@@ -248,17 +245,17 @@ onMounted(() => {
           </div>
         </ProfileSection>
 
-        <ProfileSection title="About me" icon="pi-comment" :save="saveBio" @edit="editBio">
+        <ProfileSection title="About me" icon="icon-comment" :save="saveBio" @edit="editBio">
           <p v-if="user.bio" class="bio-text">{{ user.bio }}</p>
           <p v-else class="empty">Tell others something about you. Profiles with a bio get more likes.</p>
           <template #edit>
-            <Textarea v-model="draft.bio" rows="4" autoResize :maxlength="BIO_MAX_LENGTH" fluid
-                      placeholder="What should people know about you?" aria-label="About me"/>
+            <textarea v-model="draft.bio" rows="4" class="textarea" :maxlength="BIO_MAX_LENGTH"
+                      placeholder="What should people know about you?" aria-label="About me"></textarea>
             <span class="counter">{{ draft.bio.length }}/{{ BIO_MAX_LENGTH }}</span>
           </template>
         </ProfileSection>
 
-        <ProfileSection title="Basic information" icon="pi-id-card" :save="saveBasics" @edit="editBasics">
+        <ProfileSection title="Basic information" icon="icon-id-card" :save="saveBasics" @edit="editBasics">
           <dl class="info-list">
             <div class="info-item"><dt>Name</dt><dd>{{ user.name }}</dd></div>
             <div class="info-item"><dt>Birth date</dt><dd>{{ birthDateText ?? '–' }} ({{ user.age }})</dd></div>
@@ -266,20 +263,22 @@ onMounted(() => {
           </dl>
           <template #edit>
             <label class="field">Name
-              <InputText v-model="draft.basics.name" maxlength="255" fluid/>
+              <input v-model="draft.basics.name" class="input" maxlength="255"/>
             </label>
             <div class="two-columns">
               <label class="field">Birth date
-                <DatePicker v-model="draft.basics.birthDate" :maxDate="maxBirthDate" dateFormat="dd.mm.yy" showIcon fluid/>
+                <input v-model="draft.basics.birthDate" type="date" class="input" :max="maxBirthDate"/>
               </label>
               <label class="field">Gender
-                <Select v-model="draft.basics.gender" :options="GENDERS" optionLabel="label" optionValue="value" fluid/>
+                <select v-model="draft.basics.gender" class="select">
+                  <option v-for="gender in GENDERS" :key="gender.value" :value="gender.value">{{ gender.label }}</option>
+                </select>
               </label>
             </div>
           </template>
         </ProfileSection>
 
-        <ProfileSection title="Location" icon="pi-map-marker" :save="saveAddress" @edit="editAddress">
+        <ProfileSection title="Location" icon="icon-map-marker" :save="saveAddress" @edit="editAddress">
           <dl class="info-list">
             <div class="info-item"><dt>City</dt><dd>{{ user.address?.zipCode }} {{ user.address?.city }}</dd></div>
             <div class="info-item" v-if="user.address?.street"><dt>Street</dt><dd>{{ user.address.street }}</dd></div>
@@ -288,23 +287,23 @@ onMounted(() => {
           <p class="hint">Others only see your city. The zip code decides who is nearby.</p>
           <template #edit>
             <label class="field">Street and number (optional)
-              <InputText v-model="draft.address.street" fluid autocomplete="street-address"/>
+              <input v-model="draft.address.street" class="input" autocomplete="street-address"/>
             </label>
             <div class="two-columns">
               <label class="field">Zip code
-                <InputText v-model="draft.address.zipCode" fluid autocomplete="postal-code"/>
+                <input v-model="draft.address.zipCode" class="input" autocomplete="postal-code"/>
               </label>
               <label class="field">City
-                <InputText v-model="draft.address.city" fluid autocomplete="address-level2"/>
+                <input v-model="draft.address.city" class="input" autocomplete="address-level2"/>
               </label>
             </div>
             <label class="field">Country
-              <InputText v-model="draft.address.country" fluid autocomplete="country"/>
+              <input v-model="draft.address.country" class="input" autocomplete="country"/>
             </label>
           </template>
         </ProfileSection>
 
-        <ProfileSection title="Interests and hobbies" icon="pi-tags" :save="saveTags" @edit="editTags">
+        <ProfileSection title="Interests and hobbies" icon="icon-tags" :save="saveTags" @edit="editTags">
           <div class="tag-group">
             <span class="tag-group-label">Interests</span>
             <div class="interests-tags">
@@ -322,18 +321,18 @@ onMounted(() => {
           <template #edit>
             <label class="field">Interests
               <MultiSelect v-model="draft.tags.interests" :options="tagsStore.options(TagCategory.INTEREST)"
-                           optionLabel="label" optionValue="value" filter display="chip"
-                           :selectionLimit="MAX_TAGS_PER_CATEGORY" fluid/>
+                           filter
+                           :selection-limit="MAX_TAGS_PER_CATEGORY"/>
             </label>
             <label class="field">Hobbies
               <MultiSelect v-model="draft.tags.hobbies" :options="tagsStore.options(TagCategory.HOBBY)"
-                           optionLabel="label" optionValue="value" filter display="chip"
-                           :selectionLimit="MAX_TAGS_PER_CATEGORY" fluid/>
+                           filter
+                           :selection-limit="MAX_TAGS_PER_CATEGORY"/>
             </label>
           </template>
         </ProfileSection>
 
-        <ProfileSection title="Music" icon="pi-headphones" :save="saveSongs" @edit="editSongs">
+        <ProfileSection title="Music" icon="icon-headphones" :save="saveSongs" @edit="editSongs">
           <template v-if="user.songs?.length">
             <SpotifyEmbed v-if="shownTrackId" :trackId="shownTrackId" title="Your profile song on Spotify"/>
             <SongList :songs="user.songs" playable :activeTrackId="shownTrackId" class="song-list"
@@ -345,7 +344,7 @@ onMounted(() => {
           </template>
         </ProfileSection>
 
-        <ProfileSection title="Favorite games" icon="pi-th-large" :save="saveGames" @edit="editGames">
+        <ProfileSection title="Favorite games" icon="icon-th-large" :save="saveGames" @edit="editGames">
           <GameGrid v-if="user.games?.length" :games="user.games"/>
           <p v-else class="empty">Show what you play. You can also pick games from your Steam library.</p>
           <template #edit>
@@ -353,7 +352,7 @@ onMounted(() => {
           </template>
         </ProfileSection>
 
-        <ProfileSection title="Who you're looking for" icon="pi-search" :save="savePreferences" @edit="editPreferences">
+        <ProfileSection title="Who you're looking for" icon="icon-search" :save="savePreferences" @edit="editPreferences">
           <dl class="info-list" v-if="preferencesText">
             <div class="info-item"><dt>Gender</dt><dd>{{ preferencesText.genders }}</dd></div>
             <div class="info-item"><dt>Age</dt><dd>{{ preferencesText.ages }}</dd></div>
@@ -361,18 +360,17 @@ onMounted(() => {
           </dl>
           <template #edit>
             <label class="field">Show me
-              <MultiSelect v-model="draft.preferences.seekingGenders" :options="GENDERS" optionLabel="label"
-                           optionValue="value" display="chip" fluid/>
+              <MultiSelect v-model="draft.preferences.seekingGenders" :options="GENDERS"/>
             </label>
             <div class="field">
               <span>Age {{ draft.preferences.ageRange[0] }}–{{ draft.preferences.ageRange[1] }}</span>
-              <Slider v-model="draft.preferences.ageRange" range :min="MIN_AGE" :max="MAX_AGE" class="slider"
-                      aria-label="Age range"/>
+              <RangeSlider v-model="draft.preferences.ageRange" range :min="MIN_AGE" :max="MAX_AGE" class="slider"
+                           aria-label="Age range"/>
             </div>
             <div class="field">
               <span>Up to {{ draft.preferences.maxDistanceKm }} km</span>
-              <Slider v-model="draft.preferences.maxDistanceKm" :min="1" :max="MAX_DISTANCE_KM" class="slider"
-                      aria-label="Maximum distance"/>
+              <RangeSlider v-model="draft.preferences.maxDistanceKm" :min="1" :max="MAX_DISTANCE_KM" class="slider"
+                           aria-label="Maximum distance"/>
             </div>
           </template>
         </ProfileSection>
@@ -578,6 +576,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-bottom: 1rem;
   font-size: 14px;
   font-weight: 500;
   color: rgba(235, 235, 235, 0.8);

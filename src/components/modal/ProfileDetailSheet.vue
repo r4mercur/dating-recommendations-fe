@@ -37,12 +37,12 @@ const games = computed(() => view.value?.games ?? [])
 const common = computed(() => details.value?.common ?? {interests: [], hobbies: [], artists: [], games: []})
 
 const commonItems = computed(() => [
-  ...common.value.artists.map(artist => ({icon: 'pi-headphones', label: artist})),
+  ...common.value.artists.map(artist => ({icon: 'icon-headphones', label: artist})),
   ...common.value.games
       .map(id => games.value.find(game => game.igdbId === id))
       .filter(Boolean)
-      .map(game => ({icon: 'pi-th-large', label: game.name})),
-  ...[...common.value.interests, ...common.value.hobbies].map(slug => ({icon: 'pi-tag', label: tagsStore.label(slug)})),
+      .map(game => ({icon: 'icon-th-large', label: game.name})),
+  ...[...common.value.interests, ...common.value.hobbies].map(slug => ({icon: 'icon-tag', label: tagsStore.label(slug)})),
 ])
 
 const shownTrackId = computed(() => {
@@ -56,10 +56,10 @@ const location = computed(() => {
 })
 
 const actions = [
-  {type: ReactionType.PASS, label: 'Pass', icon: 'pi-times'},
-  {type: ReactionType.COMPLIMENT, label: 'Compliment', icon: 'pi-comment'},
-  {type: ReactionType.SUPER_LIKE, label: 'Super like', icon: 'pi-star-fill'},
-  {type: ReactionType.LIKE, label: 'Like', icon: 'pi-heart-fill'},
+  {type: ReactionType.PASS, label: 'Pass', icon: 'icon-times'},
+  {type: ReactionType.COMPLIMENT, label: 'Compliment', icon: 'icon-comment'},
+  {type: ReactionType.SUPER_LIKE, label: 'Super like', icon: 'icon-star-fill'},
+  {type: ReactionType.LIKE, label: 'Like', icon: 'icon-heart-fill'},
 ]
 
 function isCommonTag(slug) {
@@ -100,7 +100,7 @@ defineExpose({details})
           <header class="hero">
             <img :src="view.photo || defaultAvatar" :alt="view.name" class="hero-photo"/>
             <button ref="closeButton" type="button" class="close" aria-label="Close profile" @click="emit('close')">
-              <i class="pi pi-times" aria-hidden="true"></i>
+              <i class="icon icon-times" aria-hidden="true"></i>
             </button>
             <div class="hero-text">
               <h2 id="detail-name">{{ view.name }}, {{ view.age }}</h2>
@@ -113,10 +113,10 @@ defineExpose({details})
 
           <div class="body">
             <section v-if="commonItems.length" class="block common">
-              <h3><i class="pi pi-sparkles" aria-hidden="true"></i> You have this in common</h3>
+              <h3><i class="icon icon-sparkles" aria-hidden="true"></i> You have this in common</h3>
               <div class="chips">
                 <span v-for="item in commonItems" :key="item.icon + item.label" class="chip highlight">
-                  <i :class="['pi', item.icon]" aria-hidden="true"></i>{{ item.label }}
+                  <i :class="['icon', item.icon]" aria-hidden="true"></i>{{ item.label }}
                 </span>
               </div>
             </section>
@@ -129,33 +129,33 @@ defineExpose({details})
             </section>
 
             <section v-if="songs.length" class="block">
-              <h3><i class="pi pi-headphones" aria-hidden="true"></i> Music</h3>
+              <h3><i class="icon icon-headphones" aria-hidden="true"></i> Music</h3>
               <SpotifyEmbed v-if="shownTrackId" :trackId="shownTrackId" :title="`${view.name}'s song on Spotify`"/>
               <SongList :songs="songs" :commonArtists="common.artists" :activeTrackId="shownTrackId" playable
                         class="songs" @play="song => playingTrackId = song.spotifyTrackId"/>
             </section>
 
             <section v-if="games.length" class="block">
-              <h3><i class="pi pi-th-large" aria-hidden="true"></i> Favorite games</h3>
+              <h3><i class="icon icon-th-large" aria-hidden="true"></i> Favorite games</h3>
               <GameGrid :games="games" :commonIds="common.games"/>
             </section>
 
             <section v-if="view.interests?.length || view.hobbies?.length" class="block">
-              <h3><i class="pi pi-tags" aria-hidden="true"></i> Interests and hobbies</h3>
+              <h3><i class="icon icon-tags" aria-hidden="true"></i> Interests and hobbies</h3>
               <div class="chips">
                 <span v-for="slug in [...(view.interests || []), ...(view.hobbies || [])]" :key="slug" class="chip"
                       :class="{highlight: isCommonTag(slug)}">{{ tagsStore.label(slug) }}</span>
               </div>
             </section>
 
-            <p v-if="loading && !details" class="loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+            <p v-if="loading && !details" class="loading"><i class="icon icon-spin icon-spinner" aria-hidden="true"></i>
               Loading profile…</p>
           </div>
 
           <footer class="actions">
             <button v-for="action in actions" :key="action.type" type="button" class="action"
                     :class="action.type.toLowerCase()" @click="emit('react', action.type)">
-              <i :class="['pi', action.icon]" aria-hidden="true"></i>
+              <i :class="['icon', action.icon]" aria-hidden="true"></i>
               <span class="label">{{ action.label }}</span>
               <span v-if="Number.isFinite(remaining[action.type])" class="count">{{ remaining[action.type] }}</span>
             </button>

@@ -1,6 +1,5 @@
 <script setup>
 import {computed} from 'vue'
-import InputText from 'primevue/inputtext'
 import {useCatalogSearch} from '@/composables/useCatalogSearch.js'
 import {MAX_SONGS} from '@/constants/profile.js'
 import './editor.css'
@@ -43,24 +42,24 @@ function move(index, offset) {
     <ol v-if="songs.length" class="chosen">
       <li v-for="(song, index) in songs" :key="song.spotifyTrackId" class="row">
         <img v-if="song.imageUrl" :src="song.imageUrl" alt="" class="cover"/>
-        <span v-else class="cover placeholder"><i class="pi pi-headphones" aria-hidden="true"></i></span>
+        <span v-else class="cover placeholder"><i class="icon icon-headphones" aria-hidden="true"></i></span>
         <span class="text">
           <span class="name">{{ song.name }}</span>
           <span class="sub">{{ song.artists.join(', ') }}</span>
         </span>
         <button type="button" class="icon-btn anthem" :class="{on: song.anthem}" @click="toggleAnthem(index)"
                 :aria-pressed="song.anthem" :title="song.anthem ? 'Profile song' : 'Make profile song'">
-          <i :class="['pi', song.anthem ? 'pi-star-fill' : 'pi-star']" aria-hidden="true"></i>
+          <i :class="['icon', song.anthem ? 'icon-star-fill' : 'icon-star']" aria-hidden="true"></i>
         </button>
         <button type="button" class="icon-btn" :disabled="index === 0" @click="move(index, -1)" title="Move up">
-          <i class="pi pi-arrow-up" aria-hidden="true"></i>
+          <i class="icon icon-arrow-up" aria-hidden="true"></i>
         </button>
         <button type="button" class="icon-btn" :disabled="index === songs.length - 1" @click="move(index, 1)"
                 title="Move down">
-          <i class="pi pi-arrow-down" aria-hidden="true"></i>
+          <i class="icon icon-arrow-down" aria-hidden="true"></i>
         </button>
         <button type="button" class="icon-btn" @click="remove(index)" :title="`Remove ${song.name}`">
-          <i class="pi pi-times" aria-hidden="true"></i>
+          <i class="icon icon-times" aria-hidden="true"></i>
         </button>
       </li>
     </ol>
@@ -68,18 +67,18 @@ function move(index, offset) {
 
     <label class="search">
       <span class="sr-only">Search Spotify</span>
-      <i class="pi pi-search" aria-hidden="true"></i>
-      <InputText v-model="search.query.value" :disabled="full" fluid
+      <i class="icon icon-search" aria-hidden="true"></i>
+      <input class="input" v-model="search.query.value" :disabled="full"
                  :placeholder="full ? `You have ${MAX_SONGS} songs, remove one to add another` : 'Search a song or artist'"
                  @keydown.enter.prevent/>
-      <i v-if="search.loading.value" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+      <i v-if="search.loading.value" class="icon icon-spin icon-spinner" aria-hidden="true"></i>
     </label>
     <p v-if="search.error.value" class="error" role="alert">{{ search.error.value }}</p>
 
     <ul v-if="search.results.value.length" class="results">
       <li v-for="track in search.results.value" :key="track.spotifyTrackId" class="row">
         <img v-if="track.imageUrl" :src="track.imageUrl" alt="" class="cover"/>
-        <span v-else class="cover placeholder"><i class="pi pi-headphones" aria-hidden="true"></i></span>
+        <span v-else class="cover placeholder"><i class="icon icon-headphones" aria-hidden="true"></i></span>
         <span class="text">
           <span class="name">{{ track.name }}</span>
           <span class="sub">{{ track.artists.join(', ') }} · {{ track.album }}</span>

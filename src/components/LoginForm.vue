@@ -1,70 +1,73 @@
 <script setup>
-import {useToast} from 'primevue/usetoast'
-import {Form} from '@primevue/forms'
-import InputText from 'primevue/inputtext'
-import Button from 'primevue/button'
-import Message from 'primevue/message'
-import Toast from 'primevue/toast'
+import {ref} from 'vue'
+import {useToast} from '@/composables/useToast.js'
+import {useForm} from '@/composables/useForm.js'
 import {useUserStore} from '@/stores/user.js'
 import {router} from '@/router.js'
-import {useForm} from "@primevue/forms/useform";
 
 const userStore = useUserStore()
 const toast = useToast()
 
-const initValues = { email: '', password: '' }
+const submitting = ref(false)
 
-const resolver = ({ values }) => {
+const resolver = (values) => {
   const errors = {}
-  if (!values.email) errors.email = [{ message: 'Email is required.' }]
-  if (!values.password) errors.password = [{ message: 'Password is required.' }]
-  return { errors }
+  if (!values.email) errors.email = 'Email is required.'
+  if (!values.password) errors.password = 'Password is required.'
+  return errors
 }
 
-const { values, meta, errors, handleSubmit } = useForm({ initialValues: initValues, resolver })
+const {values, errors, blur, input, handleSubmit} = useForm({
+  initialValues: {email: '', password: ''},
+  resolver
+})
 
-const onFormSubmit = handleSubmit(async (values) => {
-  let email = values.originalEvent.states.email.value;
-  let password = values.originalEvent.states.password.value;
-
-  const user = await userStore.login(email, password);
-  toast.add({ severity: 'success', summary: 'Logged in', detail: `Welcome ${user.name || user.email}!`, life: 3000 })
+const onFormSubmit = handleSubmit(async ({email, password}) => {
+  if (submitting.value) return
+  submitting.value = true
+  try {
+    const user = await userStore.login(email, password);
+    toast.add({severity: 'success', summary: 'Logged in', detail: `Welcome ${user.name || user.email}!`, life: 3000})
+  } catch (error) {
+    toast.add({severity: 'error', summary: "Couldn't sign you in", detail: error.message, life: 5000})
+  } finally {
+    submitting.value = false
+  }
 })
 
 const toRegistration = () => router.push('/registration');
 </script>
 
 <template>
-  <div class="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
-      <div>
-        <h2 class="mt-6 text-center text-3xl font-extrabold">Sign in to your account</h2>
-      </div>
+  <div class="auth-page">
+    <div class="auth-inner">
+      <h2 class="auth-title">Sign in to your account</h2>
 
-      <div class="mt-2 py-4 px-6 shadow-lg rounded-lg form-container">
-        <Toast />
-
-        <Form :resolver="resolver" @submit="onFormSubmit" class="space-y-6">
-          <div>
-            <InputText name="email" type="email" placeholder="Email" fluid class="w-full" />
-            <Message v-if="meta?.email?.invalid" severity="error" size="small" variant="simple">
-              {{ errors?.email?.[0]?.message }}
-            </Message>
+      <div class="form-container">
+        <form novalidate @submit="onFormSubmit">
+          <div class="field">
+            <input v-model="values.email" name="email" type="email" class="input" placeholder="Email"
+                   aria-label="Email" autocomplete="email" :aria-invalid="!!errors.email"
+                   @blur="blur('email')" @input="input('email')"/>
+            <p v-if="errors.email" class="field-error">{{ errors.email }}</p>
           </div>
 
-          <div>
-            <InputText name="password" type="password" placeholder="Password" fluid class="w-full" />
-            <Message v-if="meta?.password?.invalid" severity="error" size="small" variant="simple">
-              {{ errors?.password?.[0]?.message }}
-            </Message>
+          <div class="field">
+            <input v-model="values.password" name="password" type="password" class="input" placeholder="Password"
+                   aria-label="Password" autocomplete="current-password" :aria-invalid="!!errors.password"
+                   @blur="blur('password')" @input="input('password')"/>
+            <p v-if="errors.password" class="field-error">{{ errors.password }}</p>
           </div>
 
-          <Button type="submit" label="Sign in" class="w-full" />
-        </Form>
+          <button type="submit" class="btn btn-block" :disabled="submitting">
+            <i v-if="submitting" class="icon icon-spin icon-spinner" aria-hidden="true"></i>
+            Sign in
+          </button>
+        </form>
 
-        <div class="mt-6 text-center">
-          <span class="text-sm">Don't have an account? </span>
-          <Button label="Register here" link @click="toRegistration" class="text-sm font-medium" />
+        <div class="switch">
+          <span>Don't have an account? </span>
+          <button type="button" class="btn btn-link" @click="toRegistration">Register here</button>
         </div>
       </div>
     </div>
@@ -72,49 +75,42 @@ const toRegistration = () => router.push('/registration');
 </template>
 
 <style scoped>
-.space-y-6 > * + * {
+.auth-page {
+  display: flex;
+  padding: 0 1.5rem;
+}
+
+.auth-inner {
+  width: 100%;
+}
+
+.auth-title {
+  margin-top: 3rem;
+  font-size: 1.75rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.form-container {
+  max-width: 1000px;
+  margin: 0.5rem auto 0;
+  padding: 1.5rem 3rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+}
+
+form > * + * {
   margin-top: 1.5rem;
 }
 
-.space-y-2 > * + * {
-  margin-top: 0.5rem;
-}
-
-:deep(.p-inputtext) {
-  width: 100% !important;
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-:deep(.p-button) {
-  width: 100%;
-  justify-content: center;
-}
-
-label {
-  display: block;
-  margin-bottom: 0.25rem;
-  font-weight: 500;
-}
-
-:deep(.p-inputtext) {
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
+.switch {
+  margin-top: 3rem;
   font-size: 0.875rem;
+  text-align: center;
 }
 
-:deep(.p-inputtext:focus) {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-:deep(.p-message) {
-  margin-top: 0.25rem;
-}
-.form-container {
-  max-width: 1000px;
-  margin: 0 auto;
+.switch .btn-link {
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 </style>

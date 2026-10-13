@@ -1,7 +1,6 @@
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
-import Button from 'primevue/button'
-import { useUserStore } from '@/stores/user.js'
+import {computed, onBeforeUnmount, ref} from 'vue'
+import {useUserStore} from '@/stores/user.js'
 
 const emit = defineEmits(['close', 'uploaded'])
 
@@ -86,12 +85,15 @@ onBeforeUnmount(() => {
     <div class="modal-content" @click.stop>
       <div class="modal-header">
         <h3>Profilbild hochladen</h3>
-        <Button
-            icon="pi pi-times"
-            class="p-button-text p-button-plain close-button"
+        <button
+            type="button"
+            class="btn btn-icon close-button"
+            aria-label="Close"
             :disabled="loading"
             @click="closeModal"
-        />
+        >
+          <i class="icon icon-times" aria-hidden="true"></i>
+        </button>
       </div>
 
       <div class="modal-body">
@@ -103,7 +105,7 @@ onBeforeUnmount(() => {
               class="preview-image"
           />
           <div v-else class="preview-placeholder">
-            <i class="pi pi-image"></i>
+            <i class="icon icon-image"></i>
             <span>Keine Datei ausgewählt</span>
           </div>
         </div>
@@ -124,20 +126,24 @@ onBeforeUnmount(() => {
         <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
 
         <div class="modal-actions">
-          <Button
-              label="Abbrechen"
-              icon="pi pi-times"
-              class="p-button-secondary"
+          <button
+              type="button"
+              class="btn btn-secondary"
               :disabled="loading"
               @click="closeModal"
-          />
-          <Button
-              label="Hochladen"
-              icon="pi pi-upload"
-              :loading="loading"
+          >
+            <i class="icon icon-times" aria-hidden="true"></i>
+            Abbrechen
+          </button>
+          <button
+              type="button"
+              class="btn"
               :disabled="!canUpload"
               @click="upload"
-          />
+          >
+            <i class="icon" :class="loading ? 'icon-spin icon-spinner' : 'icon-upload'" aria-hidden="true"></i>
+            Hochladen
+          </button>
         </div>
       </div>
     </div>
@@ -179,7 +185,11 @@ onBeforeUnmount(() => {
 }
 
 .close-button {
-  color: rgb(224, 45, 45) !important;
+  color: rgb(224, 45, 45);
+}
+
+.close-button:not(:disabled):hover {
+  color: rgb(224, 45, 45);
 }
 
 .modal-body {

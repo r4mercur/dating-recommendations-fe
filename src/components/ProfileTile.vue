@@ -84,12 +84,12 @@ const dragStyle = computed(() => swipe.offset.value
     </span>
     <h3 class="tile-name">{{ profile.name }}, {{ profile.age }}</h3>
     <p class="tile-location" v-if="location">{{ location }}</p>
-    <p v-if="commonLabel" class="tile-common"><i class="pi pi-sparkles" aria-hidden="true"></i>{{ commonLabel }}</p>
+    <p v-if="commonLabel" class="tile-common"><i class="icon icon-sparkles" aria-hidden="true"></i>{{ commonLabel }}</p>
     <div class="tile-tags" v-if="tags.length">
       <span v-for="tag in tags" :key="tag" class="tile-tag">{{ tag }}</span>
     </div>
     <p v-if="profile.anthem" class="tile-anthem">
-      <i class="pi pi-headphones" aria-hidden="true"></i>
+      <i class="icon icon-headphones" aria-hidden="true"></i>
       <span>{{ profile.anthem.name }} · {{ profile.anthem.artists.join(', ') }}</span>
     </p>
   </div>

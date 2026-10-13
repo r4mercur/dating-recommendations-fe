@@ -1,6 +1,6 @@
 <script setup>
 import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
-import {useToast} from 'primevue/usetoast'
+import {useToast} from '@/composables/useToast.js'
 import ProfileTile from '@/components/ProfileTile.vue'
 import ReactionBar from '@/components/ReactionBar.vue'
 import ComplimentSheet from '@/components/modal/ComplimentSheet.vue'
@@ -175,19 +175,19 @@ async function playIntro(type, tile, {swiped, message}) {
 
   if (type === ReactionType.LIKE) {
     tile.classList.add('flash-like')
-    burst(centerOf(avatar), {icon: 'pi-heart-fill', color: '#ff4d79'})
+    burst(centerOf(avatar), {icon: 'icon-heart-fill', color: '#ff4d79'})
     if (!swiped) await sleep(280)
   } else if (type === ReactionType.SUPER_LIKE) {
     tile.classList.add('flash-super')
     shockwave(centerOf(tile))
-    setTimeout(() => burst(centerOf(tile), {icon: 'pi-star-fill', color: '#ffd54f', count: 14, distance: 110, size: 18}), 120)
+    setTimeout(() => burst(centerOf(tile), {icon: 'icon-star-fill', color: '#ffd54f', count: 14, distance: 110, size: 18}), 120)
     await sleep(550)
   } else if (type === ReactionType.COMPLIMENT) {
     tile.classList.add('flash-compliment')
     await sleep(250) // let the sheet slide away first
     await flyBubble(message, avatar)
     avatar.animate([{transform: 'scale(1)'}, {transform: 'scale(1.12)'}, {transform: 'scale(1)'}], {duration: 350, easing: SPRING})
-    burst(centerOf(avatar), {icon: 'pi-sparkles', color: '#9fe1cb', count: 8, distance: 60})
+    burst(centerOf(avatar), {icon: 'icon-sparkles', color: '#9fe1cb', count: 8, distance: 60})
     await sleep(300)
   }
 }
@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
   <div class="matches-container">
     <div v-if="initialLoading" class="loading-container">
       <div class="loading-spinner">
-        <i class="pi pi-spin pi-spinner"></i>
+        <i class="icon icon-spin icon-spinner"></i>
       </div>
       <p>Loading your recommendations...</p>
     </div>
@@ -296,7 +296,7 @@ onBeforeUnmount(() => {
 
       <div v-if="profiles.length === 0" class="no-matches">
         <div class="no-matches-icon">
-          <i class="pi pi-heart"></i>
+          <i class="icon icon-heart"></i>
         </div>
         <h3>No more profiles right now</h3>
         <p>Expand your search criteria or come back later.</p>

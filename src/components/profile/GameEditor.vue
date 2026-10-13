@@ -1,6 +1,5 @@
 <script setup>
 import {computed, ref} from 'vue'
-import InputText from 'primevue/inputtext'
 import {apiFetch} from '@/api.js'
 import {useCatalogSearch} from '@/composables/useCatalogSearch.js'
 import {MAX_GAMES} from '@/constants/profile.js'
@@ -64,20 +63,20 @@ async function loadSteamSuggestions() {
     <ol v-if="games.length" class="chosen">
       <li v-for="(game, index) in games" :key="game.igdbId" class="row">
         <img v-if="game.coverUrl" :src="game.coverUrl" alt="" class="cover tall"/>
-        <span v-else class="cover tall placeholder"><i class="pi pi-th-large" aria-hidden="true"></i></span>
+        <span v-else class="cover tall placeholder"><i class="icon icon-th-large" aria-hidden="true"></i></span>
         <span class="text">
           <span class="name">{{ game.name }}</span>
           <span class="sub">{{ [game.year, ...(game.platforms || []).slice(0, 3)].filter(Boolean).join(' · ') }}</span>
         </span>
         <button type="button" class="icon-btn" :disabled="index === 0" @click="move(index, -1)" title="Move up">
-          <i class="pi pi-arrow-up" aria-hidden="true"></i>
+          <i class="icon icon-arrow-up" aria-hidden="true"></i>
         </button>
         <button type="button" class="icon-btn" :disabled="index === games.length - 1" @click="move(index, 1)"
                 title="Move down">
-          <i class="pi pi-arrow-down" aria-hidden="true"></i>
+          <i class="icon icon-arrow-down" aria-hidden="true"></i>
         </button>
         <button type="button" class="icon-btn" @click="remove(index)" :title="`Remove ${game.name}`">
-          <i class="pi pi-times" aria-hidden="true"></i>
+          <i class="icon icon-times" aria-hidden="true"></i>
         </button>
       </li>
     </ol>
@@ -85,18 +84,18 @@ async function loadSteamSuggestions() {
 
     <label class="search">
       <span class="sr-only">Search games</span>
-      <i class="pi pi-search" aria-hidden="true"></i>
-      <InputText v-model="search.query.value" :disabled="full" fluid
+      <i class="icon icon-search" aria-hidden="true"></i>
+      <input class="input" v-model="search.query.value" :disabled="full"
                  :placeholder="full ? `You have ${MAX_GAMES} games, remove one to add another` : 'Search a game'"
                  @keydown.enter.prevent/>
-      <i v-if="search.loading.value" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+      <i v-if="search.loading.value" class="icon icon-spin icon-spinner" aria-hidden="true"></i>
     </label>
     <p v-if="search.error.value" class="error" role="alert">{{ search.error.value }}</p>
 
     <ul v-if="search.results.value.length" class="results">
       <li v-for="game in search.results.value" :key="game.igdbId" class="row">
         <img v-if="game.coverUrl" :src="game.coverUrl" alt="" class="cover tall"/>
-        <span v-else class="cover tall placeholder"><i class="pi pi-th-large" aria-hidden="true"></i></span>
+        <span v-else class="cover tall placeholder"><i class="icon icon-th-large" aria-hidden="true"></i></span>
         <span class="text">
           <span class="name">{{ game.name }}</span>
           <span class="sub">{{ [game.year, ...(game.platforms || []).slice(0, 3)].filter(Boolean).join(' · ') }}</span>
@@ -107,13 +106,13 @@ async function loadSteamSuggestions() {
       </li>
     </ul>
 
-    <p class="subheading"><i class="pi pi-desktop" aria-hidden="true"></i> Import from Steam</p>
+    <p class="subheading"><i class="icon icon-desktop" aria-hidden="true"></i> Import from Steam</p>
     <div class="steam-form">
-      <InputText v-model="steamProfile" fluid maxlength="200" aria-label="Steam profile"
+      <input class="input" v-model="steamProfile" maxlength="200" aria-label="Steam profile"
                  placeholder="steamcommunity.com/id/yourname" @input="steamError = null"
                  @keydown.enter.prevent="loadSteamSuggestions"/>
       <button type="button" class="add-btn" :disabled="steamLoading" @click="loadSteamSuggestions">
-        <i v-if="steamLoading" class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+        <i v-if="steamLoading" class="icon icon-spin icon-spinner" aria-hidden="true"></i>
         Show my games
       </button>
     </div>
@@ -123,7 +122,7 @@ async function loadSteamSuggestions() {
     <ul v-if="steamSuggestions.length" class="results">
       <li v-for="game in steamSuggestions" :key="game.steamAppId" class="row">
         <img v-if="game.coverUrl" :src="game.coverUrl" alt="" class="cover"/>
-        <span v-else class="cover placeholder"><i class="pi pi-th-large" aria-hidden="true"></i></span>
+        <span v-else class="cover placeholder"><i class="icon icon-th-large" aria-hidden="true"></i></span>
         <span class="text">
           <span class="name">{{ game.name }}</span>
           <span class="sub">{{ game.playtimeHours }} h played</span>

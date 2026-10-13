@@ -1,17 +1,9 @@
 <script setup>
 import {onMounted, ref} from "vue";
-import {Form} from "@primevue/forms";
-import Button from "primevue/button";
-import DatePicker from "primevue/datepicker";
-import InputGroup from "primevue/inputgroup";
-import InputGroupAddon from "primevue/inputgroupaddon";
-import InputText from "primevue/inputtext";
-import Message from "primevue/message";
-import MultiSelect from "primevue/multiselect";
-import Password from "primevue/password";
-import Select from "primevue/select";
-import Textarea from "primevue/textarea";
-import {useToast} from "primevue/usetoast";
+import MultiSelect from "@/components/ui/MultiSelect.vue";
+import PasswordInput from "@/components/ui/PasswordInput.vue";
+import {useToast} from "@/composables/useToast.js";
+import {useForm} from "@/composables/useForm.js";
 import {router} from "@/router.js";
 import {useUserStore} from "@/stores/user.js";
 import {TagCategory, useTagsStore} from "@/stores/tags.js";
@@ -29,14 +21,15 @@ const tagsStore = useTagsStore();
 const toast = useToast();
 
 const submitting = ref(false);
-const maxBirthDate = latestBirthDate();
+/** latest birth date that is old enough, yyyy-MM-dd like the value of the date field */
+const maxBirthDate = toIsoDate(latestBirthDate());
 
 const initialValues = {
   name: '',
   email: '',
   password: '',
-  birthDate: null,
-  gender: null,
+  birthDate: '',
+  gender: '',
   bio: '',
   interests: [],
   hobbies: [],
@@ -46,50 +39,52 @@ const initialValues = {
   country: 'DE',
 };
 
-const resolver = ({values}) => {
+const resolver = (values) => {
   const errors = {};
   const required = (field, message) => {
     if (!values[field] || (typeof values[field] === 'string' && !values[field].trim())) {
-      errors[field] = [{message}];
+      errors[field] = message;
     }
   };
 
   required('name', 'Name is required.');
   required('email', 'Email is required.');
   if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
-    errors.email = [{message: 'Enter a valid email address.'}];
+    errors.email = 'Enter a valid email address.';
   }
   if (!values.password || values.password.length < PASSWORD_MIN_LENGTH) {
-    errors.password = [{message: `Use at least ${PASSWORD_MIN_LENGTH} characters.`}];
+    errors.password = `Use at least ${PASSWORD_MIN_LENGTH} characters.`;
   }
   required('birthDate', 'Birth date is required.');
   if (values.birthDate && values.birthDate > maxBirthDate) {
-    errors.birthDate = [{message: 'You need to be at least 18.'}];
+    errors.birthDate = 'You need to be at least 18.';
   }
   required('gender', 'Gender is required.');
   if ((values.bio || '').length > BIO_MAX_LENGTH) {
-    errors.bio = [{message: `At most ${BIO_MAX_LENGTH} characters.`}];
+    errors.bio = `At most ${BIO_MAX_LENGTH} characters.`;
   }
   required('zipCode', 'Zip code is required.');
   required('city', 'City is required.');
   required('country', 'Country is required.');
 
-  return {errors};
+  return errors;
 };
 
-async function onFormSubmit({valid, values}) {
-  if (!valid || submitting.value) return;
+const {values, errors, blur, input, handleSubmit} = useForm({initialValues, resolver});
+
+const onFormSubmit = handleSubmit(async (values) => {
+  if (submitting.value) return;
   submitting.value = true;
   try {
     await userStore.register({
       name: values.name.trim(),
       email: values.email.trim(),
       password: values.password,
-      birthDate: toIsoDate(values.birthDate),
+      birthDate: values.birthDate,
       gender: values.gender,
       bio: values.bio?.trim() || null,
-      interests: values.interests,
-      hobbies: values.hobbies,
+      interests: [...values.interests],
+      hobbies: [...values.hobbies],
       address: {
         street: values.street?.trim() || null,
         zipCode: values.zipCode.trim(),
@@ -105,147 +100,143 @@ async function onFormSubmit({valid, values}) {
   } finally {
     submitting.value = false;
   }
-}
+});
 
 onMounted(() => tagsStore.load());
 </script>
 
 <template>
-  <div class="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
-      <div>
-        <h2 class="mt-6 text-center text-3xl font-extrabold">
-          Create your account
-        </h2>
-      </div>
-      <div class="mt-2 py-4 px-6 shadow-lg rounded-lg form-container">
-        <Form v-slot="$form" :initialValues="initialValues" :resolver="resolver" :validateOnValueUpdate="false"
-              :validateOnBlur="true" @submit="onFormSubmit" class="space-y-6">
-          <div class="space-y-2">
+  <div class="auth-page">
+    <div class="auth-inner">
+      <h2 class="auth-title">Create your account</h2>
+
+      <div class="form-container">
+        <form novalidate @submit="onFormSubmit">
+          <div class="field">
             <label for="name">Name</label>
-            <InputText id="name" name="name" placeholder="How others will see you" fluid autocomplete="name"/>
-            <Message v-if="$form.name?.invalid" severity="error" size="small" variant="simple">
-              {{ $form.name.error?.message }}
-            </Message>
+            <input id="name" v-model="values.name" name="name" class="input" placeholder="How others will see you"
+                   autocomplete="name" :aria-invalid="!!errors.name" @blur="blur('name')" @input="input('name')"/>
+            <p v-if="errors.name" class="field-error">{{ errors.name }}</p>
           </div>
 
-          <div class="space-y-2">
+          <div class="field">
             <label for="email">Email</label>
-            <InputText id="email" name="email" type="email" placeholder="name@example.com" fluid autocomplete="email"/>
-            <Message v-if="$form.email?.invalid" severity="error" size="small" variant="simple">
-              {{ $form.email.error?.message }}
-            </Message>
+            <input id="email" v-model="values.email" name="email" type="email" class="input"
+                   placeholder="name@example.com" autocomplete="email" :aria-invalid="!!errors.email"
+                   @blur="blur('email')" @input="input('email')"/>
+            <p v-if="errors.email" class="field-error">{{ errors.email }}</p>
           </div>
 
-          <div class="space-y-2">
+          <div class="field">
             <label for="password">Password</label>
-            <Password inputId="password" name="password" :feedback="false" toggleMask fluid
-                      :placeholder="`At least ${PASSWORD_MIN_LENGTH} characters`" autocomplete="new-password"/>
-            <Message v-if="$form.password?.invalid" severity="error" size="small" variant="simple">
-              {{ $form.password.error?.message }}
-            </Message>
+            <PasswordInput id="password" v-model="values.password" name="password"
+                           :placeholder="`At least ${PASSWORD_MIN_LENGTH} characters`" autocomplete="new-password"
+                           :aria-invalid="!!errors.password" @blur="blur('password')" @input="input('password')"/>
+            <p v-if="errors.password" class="field-error">{{ errors.password }}</p>
           </div>
 
-          <div class="grid grid-cols-2 gap-4 two-columns">
-            <div class="space-y-2">
+          <div class="two-columns">
+            <div class="field">
               <label for="birthDate">Birth date</label>
-              <DatePicker inputId="birthDate" name="birthDate" :maxDate="maxBirthDate" dateFormat="dd.mm.yy"
-                          placeholder="dd.mm.yyyy" showIcon fluid/>
-              <Message v-if="$form.birthDate?.invalid" severity="error" size="small" variant="simple">
-                {{ $form.birthDate.error?.message }}
-              </Message>
+              <input id="birthDate" v-model="values.birthDate" name="birthDate" type="date" class="input"
+                     :max="maxBirthDate" :aria-invalid="!!errors.birthDate"
+                     @blur="blur('birthDate')" @input="input('birthDate')"/>
+              <p v-if="errors.birthDate" class="field-error">{{ errors.birthDate }}</p>
             </div>
 
-            <div class="space-y-2">
+            <div class="field">
               <label for="gender">Gender</label>
-              <Select inputId="gender" name="gender" :options="GENDERS" optionLabel="label" optionValue="value"
-                      placeholder="Select" fluid/>
-              <Message v-if="$form.gender?.invalid" severity="error" size="small" variant="simple">
-                {{ $form.gender.error?.message }}
-              </Message>
+              <select id="gender" v-model="values.gender" name="gender" class="select"
+                      :aria-invalid="!!errors.gender" @blur="blur('gender')" @change="input('gender')">
+                <option value="" disabled>Select</option>
+                <option v-for="gender in GENDERS" :key="gender.value" :value="gender.value">{{ gender.label }}</option>
+              </select>
+              <p v-if="errors.gender" class="field-error">{{ errors.gender }}</p>
             </div>
           </div>
 
-          <div class="space-y-2">
+          <div class="field">
             <label for="bio">About you <span class="optional">(optional)</span></label>
-            <Textarea id="bio" name="bio" rows="3" autoResize :maxlength="BIO_MAX_LENGTH" fluid
-                      placeholder="What should people know about you?"/>
-            <Message v-if="$form.bio?.invalid" severity="error" size="small" variant="simple">
-              {{ $form.bio.error?.message }}
-            </Message>
+            <textarea id="bio" v-model="values.bio" name="bio" rows="3" class="textarea" :maxlength="BIO_MAX_LENGTH"
+                      placeholder="What should people know about you?" :aria-invalid="!!errors.bio"
+                      @blur="blur('bio')" @input="input('bio')"></textarea>
+            <p v-if="errors.bio" class="field-error">{{ errors.bio }}</p>
           </div>
 
-          <div class="space-y-2">
+          <div class="field">
             <label for="interests">Interests</label>
-            <MultiSelect inputId="interests" name="interests" :options="tagsStore.options(TagCategory.INTEREST)"
-                         optionLabel="label" optionValue="value" filter display="chip"
-                         :selectionLimit="MAX_TAGS_PER_CATEGORY" placeholder="Select your interests" fluid/>
+            <MultiSelect v-model="values.interests" input-id="interests"
+                         :options="tagsStore.options(TagCategory.INTEREST)" filter
+                         :selection-limit="MAX_TAGS_PER_CATEGORY" placeholder="Select your interests"/>
           </div>
 
-          <div class="space-y-2">
+          <div class="field">
             <label for="hobbies">Hobbies</label>
-            <MultiSelect inputId="hobbies" name="hobbies" :options="tagsStore.options(TagCategory.HOBBY)"
-                         optionLabel="label" optionValue="value" filter display="chip"
-                         :selectionLimit="MAX_TAGS_PER_CATEGORY" placeholder="Select your hobbies" fluid/>
+            <MultiSelect v-model="values.hobbies" input-id="hobbies" :options="tagsStore.options(TagCategory.HOBBY)"
+                         filter :selection-limit="MAX_TAGS_PER_CATEGORY" placeholder="Select your hobbies"/>
           </div>
 
-          <div class="space-y-2">
+          <div class="field">
             <label>Address</label>
             <p class="hint">Only your city is shown to others. We use your zip code to find people nearby.</p>
-            <div class="address-container space-y-4">
-              <div class="space-y-2">
+            <div class="address-container">
+              <div class="field">
                 <label for="street">Street and number <span class="optional">(optional)</span></label>
-                <InputGroup>
-                  <InputGroupAddon><i class="pi pi-home"></i></InputGroupAddon>
-                  <InputText id="street" name="street" placeholder="Main Street 1" fluid autocomplete="street-address"/>
-                </InputGroup>
+                <div class="input-group">
+                  <span class="input-addon"><i class="icon icon-home" aria-hidden="true"></i></span>
+                  <input id="street" v-model="values.street" name="street" class="input" placeholder="Main Street 1"
+                         autocomplete="street-address"/>
+                </div>
               </div>
 
-              <div class="grid grid-cols-2 gap-4 two-columns">
-                <div class="space-y-2">
+              <div class="two-columns">
+                <div class="field">
                   <label for="zipCode">Zip code</label>
-                  <InputGroup>
-                    <InputGroupAddon><i class="pi pi-hashtag"></i></InputGroupAddon>
-                    <InputText id="zipCode" name="zipCode" placeholder="20095" fluid autocomplete="postal-code"/>
-                  </InputGroup>
-                  <Message v-if="$form.zipCode?.invalid" severity="error" size="small" variant="simple">
-                    {{ $form.zipCode.error?.message }}
-                  </Message>
+                  <div class="input-group">
+                    <span class="input-addon"><i class="icon icon-hashtag" aria-hidden="true"></i></span>
+                    <input id="zipCode" v-model="values.zipCode" name="zipCode" class="input" placeholder="20095"
+                           autocomplete="postal-code" :aria-invalid="!!errors.zipCode"
+                           @blur="blur('zipCode')" @input="input('zipCode')"/>
+                  </div>
+                  <p v-if="errors.zipCode" class="field-error">{{ errors.zipCode }}</p>
                 </div>
 
-                <div class="space-y-2">
+                <div class="field">
                   <label for="city">City</label>
-                  <InputGroup>
-                    <InputGroupAddon><i class="pi pi-building"></i></InputGroupAddon>
-                    <InputText id="city" name="city" placeholder="Hamburg" fluid autocomplete="address-level2"/>
-                  </InputGroup>
-                  <Message v-if="$form.city?.invalid" severity="error" size="small" variant="simple">
-                    {{ $form.city.error?.message }}
-                  </Message>
+                  <div class="input-group">
+                    <span class="input-addon"><i class="icon icon-building" aria-hidden="true"></i></span>
+                    <input id="city" v-model="values.city" name="city" class="input" placeholder="Hamburg"
+                           autocomplete="address-level2" :aria-invalid="!!errors.city"
+                           @blur="blur('city')" @input="input('city')"/>
+                  </div>
+                  <p v-if="errors.city" class="field-error">{{ errors.city }}</p>
                 </div>
               </div>
 
-              <div class="space-y-2">
+              <div class="field">
                 <label for="country">Country</label>
-                <InputGroup>
-                  <InputGroupAddon><i class="pi pi-globe"></i></InputGroupAddon>
-                  <InputText id="country" name="country" placeholder="DE" fluid autocomplete="country"/>
-                </InputGroup>
-                <Message v-if="$form.country?.invalid" severity="error" size="small" variant="simple">
-                  {{ $form.country.error?.message }}
-                </Message>
+                <div class="input-group">
+                  <span class="input-addon"><i class="icon icon-globe" aria-hidden="true"></i></span>
+                  <input id="country" v-model="values.country" name="country" class="input" placeholder="DE"
+                         autocomplete="country" :aria-invalid="!!errors.country"
+                         @blur="blur('country')" @input="input('country')"/>
+                </div>
+                <p v-if="errors.country" class="field-error">{{ errors.country }}</p>
               </div>
             </div>
           </div>
 
-          <div class="pt-4">
-            <Button type="submit" label="Register" :loading="submitting" class="w-full py-3 text-base font-medium"/>
+          <div class="submit">
+            <button type="submit" class="btn btn-block" :disabled="submitting">
+              <i v-if="submitting" class="icon icon-spin icon-spinner" aria-hidden="true"></i>
+              Register
+            </button>
           </div>
-        </Form>
+        </form>
 
-        <div class="mt-6 text-center">
-          <span class="text-sm">Already have an account? </span>
-          <Button label="Sign in here" link @click="router.push('/login')" class="text-sm font-medium"/>
+        <div class="switch">
+          <span>Already have an account? </span>
+          <button type="button" class="btn btn-link" @click="router.push('/login')">Sign in here</button>
         </div>
       </div>
     </div>
@@ -253,11 +244,35 @@ onMounted(() => tagsStore.load());
 </template>
 
 <style scoped>
-.space-y-6 > * + * {
+.auth-page {
+  display: flex;
+  padding: 0 1.5rem;
+}
+
+.auth-inner {
+  width: 100%;
+}
+
+.auth-title {
+  margin-top: 3rem;
+  font-size: 1.75rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.form-container {
+  max-width: 1000px;
+  margin: 0.5rem auto 0;
+  padding: 1.5rem 3rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+}
+
+form > * + * {
   margin-top: 1.5rem;
 }
 
-.space-y-2 > * + * {
+.field > * + * {
   margin-top: 0.5rem;
 }
 
@@ -278,18 +293,21 @@ label {
   margin: 0;
 }
 
-:deep(.p-button) {
-  width: 100%;
-  justify-content: center;
-}
-
-:deep(.p-message) {
+.field-error {
   margin-top: 0.25rem;
 }
 
-.form-container {
-  max-width: 1000px;
-  margin: 0 auto;
+.address-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--ui-primary);
+}
+
+.address-container > * + * {
+  margin-top: 0;
 }
 
 .two-columns {
@@ -298,10 +316,25 @@ label {
   gap: 1rem;
 }
 
-.address-container {
-  padding: 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--p-primary-color);
+.submit {
+  padding-top: 1.5rem;
+}
+
+.submit .btn {
+  padding-block: 1rem;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.switch {
+  margin-top: 3rem;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.switch .btn-link {
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 @media (max-width: 480px) {

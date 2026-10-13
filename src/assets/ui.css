@@ -1,0 +1,225 @@
+/*
+ * Basic building blocks shared by all views: buttons, text fields, selects and messages.
+ * Dark by default like the rest of the app (the text colors in the views are light).
+ */
+:root {
+  --ui-surface-0: #ffffff;
+  --ui-surface-300: #d4d4d8;
+  --ui-surface-400: #a1a1aa;
+  --ui-surface-500: #71717a;
+  --ui-surface-600: #52525b;
+  --ui-surface-700: #3f3f46;
+  --ui-surface-800: #27272a;
+  --ui-surface-900: #18181b;
+  --ui-surface-950: #09090b;
+
+  --ui-primary: #34d399;
+  --ui-primary-hover: #6ee7b7;
+  --ui-primary-active: #a7f3d0;
+  --ui-primary-contrast: var(--ui-surface-900);
+  --ui-danger: #f87171;
+
+  --ui-radius: 6px;
+  --ui-focus-ring: 0 0 0 2px var(--ui-surface-900), 0 0 0 4px var(--ui-primary);
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ui-primary);
+  border-radius: var(--ui-radius);
+  font: inherit;
+  color: var(--ui-primary-contrast);
+  background: var(--ui-primary);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.btn:not(:disabled):hover {
+  border-color: var(--ui-primary-hover);
+  background: var(--ui-primary-hover);
+}
+
+.btn:not(:disabled):active {
+  border-color: var(--ui-primary-active);
+  background: var(--ui-primary-active);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-secondary {
+  border-color: var(--ui-surface-700);
+  color: var(--ui-surface-300);
+  background: var(--ui-surface-800);
+}
+
+.btn-secondary:not(:disabled):hover {
+  border-color: var(--ui-surface-600);
+  color: var(--ui-surface-0);
+  background: var(--ui-surface-700);
+}
+
+.btn-secondary:not(:disabled):active {
+  border-color: var(--ui-surface-600);
+  background: var(--ui-surface-600);
+}
+
+.btn-link {
+  padding: 0.5rem 0.75rem;
+  border-color: transparent;
+  color: var(--ui-primary);
+  background: transparent;
+}
+
+.btn-link:not(:disabled):hover,
+.btn-link:not(:disabled):active {
+  border-color: transparent;
+  color: var(--ui-primary-hover);
+  background: transparent;
+  text-decoration: underline;
+}
+
+/* icon only button without background */
+.btn-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border-color: transparent;
+  color: var(--ui-surface-400);
+  background: transparent;
+}
+
+.btn-icon:not(:disabled):hover {
+  border-color: transparent;
+  color: var(--ui-surface-0);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- text fields ---------- */
+.input,
+.select,
+.textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ui-surface-700);
+  border-radius: var(--ui-radius);
+  font: inherit;
+  color: var(--ui-surface-0);
+  background: var(--ui-surface-950);
+  box-shadow: 0 1px 2px 0 rgba(18, 18, 23, 0.05);
+  transition: border-color 0.2s, background-color 0.2s;
+  appearance: none;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--ui-surface-500);
+}
+
+.input:enabled:hover,
+.select:enabled:hover,
+.textarea:enabled:hover {
+  border-color: var(--ui-surface-600);
+}
+
+.input:enabled:focus,
+.select:enabled:focus,
+.textarea:enabled:focus {
+  outline: none;
+  border-color: var(--ui-primary);
+}
+
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  color: var(--ui-surface-400);
+  background: var(--ui-surface-800);
+}
+
+.input[aria-invalid='true'],
+.select[aria-invalid='true'],
+.textarea[aria-invalid='true'] {
+  border-color: var(--ui-danger);
+}
+
+.textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+  field-sizing: content; /* grows with the text where supported */
+}
+
+/* the browser's own calendar is dark as well */
+.input[type='date'] {
+  color-scheme: dark;
+}
+
+.select {
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  cursor: pointer;
+}
+
+.select option {
+  color: var(--ui-surface-0);
+  background: var(--ui-surface-900);
+}
+
+/* input with an icon or button in front of / behind it */
+.input-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.input-group > .input-addon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--ui-surface-700);
+  border-right: 0;
+  border-radius: var(--ui-radius) 0 0 var(--ui-radius);
+  color: var(--ui-surface-400);
+  background: var(--ui-surface-800);
+}
+
+.input-group > .input {
+  flex: 1;
+  border-radius: 0 var(--ui-radius) var(--ui-radius) 0;
+}
+
+/* ---------- messages ---------- */
+.field-error {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--ui-danger);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -1,0 +1,69 @@
+/*
+ * Icon set: every icon is an SVG file in ./icons, drawn as a mask so it takes the text color and font size,
+ * e.g. <i class="icon icon-heart"></i>. Add an icon by dropping an SVG into ./icons and adding a line here.
+ */
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  vertical-align: -0.125em;
+  background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.icon-spin {
+  animation: icon-spin 1s linear infinite;
+}
+
+@keyframes icon-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.icon-bars { --icon: url('./icons/bars.svg'); }
+.icon-arrow-down { --icon: url('./icons/arrow-down.svg'); }
+.icon-arrow-left { --icon: url('./icons/arrow-left.svg'); }
+.icon-arrow-up { --icon: url('./icons/arrow-up.svg'); }
+.icon-building { --icon: url('./icons/building.svg'); }
+.icon-calendar { --icon: url('./icons/calendar.svg'); }
+.icon-camera { --icon: url('./icons/camera.svg'); }
+.icon-chart-bar { --icon: url('./icons/chart-bar.svg'); }
+.icon-check { --icon: url('./icons/check.svg'); }
+.icon-chevron-down { --icon: url('./icons/chevron-down.svg'); }
+.icon-comment { --icon: url('./icons/comment.svg'); }
+.icon-comments { --icon: url('./icons/comments.svg'); }
+.icon-desktop { --icon: url('./icons/desktop.svg'); }
+.icon-envelope { --icon: url('./icons/envelope.svg'); }
+.icon-eye { --icon: url('./icons/eye.svg'); }
+.icon-eye-slash { --icon: url('./icons/eye-slash.svg'); }
+.icon-github { --icon: url('./icons/github.svg'); }
+.icon-globe { --icon: url('./icons/globe.svg'); }
+.icon-hashtag { --icon: url('./icons/hashtag.svg'); }
+.icon-headphones { --icon: url('./icons/headphones.svg'); }
+.icon-heart { --icon: url('./icons/heart.svg'); }
+.icon-heart-fill { --icon: url('./icons/heart-fill.svg'); }
+.icon-home { --icon: url('./icons/home.svg'); }
+.icon-id-card { --icon: url('./icons/id-card.svg'); }
+.icon-image { --icon: url('./icons/image.svg'); }
+.icon-info-circle { --icon: url('./icons/info-circle.svg'); }
+.icon-map-marker { --icon: url('./icons/map-marker.svg'); }
+.icon-pencil { --icon: url('./icons/pencil.svg'); }
+.icon-play { --icon: url('./icons/play.svg'); }
+.icon-search { --icon: url('./icons/search.svg'); }
+.icon-send { --icon: url('./icons/send.svg'); }
+.icon-sign-in { --icon: url('./icons/sign-in.svg'); }
+.icon-sign-out { --icon: url('./icons/sign-out.svg'); }
+.icon-sparkles { --icon: url('./icons/sparkles.svg'); }
+.icon-spinner { --icon: url('./icons/spinner.svg'); }
+.icon-star { --icon: url('./icons/star.svg'); }
+.icon-star-fill { --icon: url('./icons/star-fill.svg'); }
+.icon-tag { --icon: url('./icons/tag.svg'); }
+.icon-tags { --icon: url('./icons/tags.svg'); }
+.icon-th-large { --icon: url('./icons/th-large.svg'); }
+.icon-times { --icon: url('./icons/times.svg'); }
+.icon-upload { --icon: url('./icons/upload.svg'); }
+.icon-user { --icon: url('./icons/user.svg'); }
+.icon-volume-up { --icon: url('./icons/volume-up.svg'); }

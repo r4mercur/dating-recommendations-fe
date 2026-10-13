@@ -24,7 +24,7 @@
 
       <h2>Contact Us</h2>
       <div class="contact-item">
-        <i class="pi pi-github"></i>
+        <i class="icon icon-github"></i>
         <a href="https://github.com/r4mercur" target="_blank" class="github-link">Contact</a>
       </div>
     </div>

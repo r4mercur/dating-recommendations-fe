@@ -1,26 +1,30 @@
 <script setup>
-import Menubar from 'primevue/menubar';
-import Avatar from 'primevue/avatar';
-import {computed} from "vue";
+import {computed, ref, watch} from "vue";
 import {useRoute} from "vue-router";
 import {useUserStore} from "@/stores/user.js";
+import {useChatStore} from "@/stores/chat.js";
 import LogoIcon from '@/assets/mainmenu-logo.svg';
 import defaultAvatar from '@/assets/avatar.jpg';
 
 const route = useRoute();
 const user = useUserStore();
+const chatStore = useChatStore();
+
+/** the item list is a dropdown on narrow screens */
+const menuOpen = ref(false);
+watch(() => route.path, () => menuOpen.value = false);
 
 const items = computed(() => {
   const baseItems = [
     {
       label: 'Home',
-      icon: 'pi pi-home',
+      icon: 'icon-home',
       to: '/',
       class: 'menu-item-home'
     },
     {
       label: 'About',
-      icon: 'pi pi-info-circle',
+      icon: 'icon-info-circle',
       to: '/about',
       class: 'menu-item-about'
     }
@@ -30,7 +34,7 @@ const items = computed(() => {
     baseItems.splice(1, 0,
         {
           label: 'Matches',
-          icon: 'pi pi-heart-fill',
+          icon: 'icon-heart-fill',
           to: '/matches',
           class: 'menu-item-matches'
         }
@@ -38,15 +42,16 @@ const items = computed(() => {
     baseItems.splice(2, 0,
         {
           label: 'Chats',
-          icon: 'pi pi-send',
+          icon: 'icon-send',
           to: '/messages',
+          badge: chatStore.unreadTotal,
           class: 'menu-item-messages'
         }
     );
     baseItems.push(
         {
           label: 'Logout',
-          icon: 'pi pi-sign-out',
+          icon: 'icon-sign-out',
           command: () => {
             user.logout();
           },
@@ -67,69 +72,78 @@ const isLoggedId = computed(() => {
   return user.user !== null;
 });
 
+function isActive(item) {
+  return item.to === '/' ? isHomeActive.value : route.path === item.to || route.path.startsWith(`${item.to}/`);
+}
+
 const avatarUrl = computed(() => user.avatar || defaultAvatar);
 </script>
 
 <template>
   <header class="main-menu">
     <div class="card">
-      <Menubar :model="items">
-        <template #start>
+      <nav class="menubar" aria-label="Main">
+        <div class="menubar-start">
           <router-link to="/">
             <img :src="LogoIcon" alt="Logo" class="logo" />
           </router-link>
-        </template>
-        <template #item="{ item, props, hasSubmenu, root }">
-          <a
-              v-if="item.command"
-              v-bind="props.action"
-              @click="item.command"
-              class="p-menubar-item-link menu-item-link menu-item-logout"
-              :class="[item.class]"
-              tabindex="-1"
-              style="cursor: pointer;"
-          >
-            <div class="menu-item-content">
-              <i v-if="item.icon" :class="[item.icon, 'menu-item-icon']"></i>
-              <span v-if="item.label" class="menu-item-label">{{ item.label }}</span>
-            </div>
-          </a>
-          <router-link
-              v-else
-              :to="item.to"
-              v-bind="props.action"
-              class="p-menubar-item-link menu-item-link"
-              :class="{
-                'router-link-active': item.to === '/' ? isHomeActive : route.path === item.to,
-                [item.class]: true
-              }"
-              tabindex="-1"
-          >
-            <div class="menu-item-content">
-              <i v-if="item.icon" :class="[item.icon, 'menu-item-icon']"></i>
-              <span v-if="item.label" class="menu-item-label">{{ item.label }}</span>
-            </div>
-          </router-link>
-        </template>
-        <template #end>
-          <div v-if="isLoggedId" class="flex items-center gap-2">
+        </div>
+
+        <button type="button" class="menubar-button" aria-label="Menu" aria-controls="menubar-list"
+                :aria-expanded="menuOpen" @click="menuOpen = !menuOpen">
+          <i class="icon icon-bars" aria-hidden="true"></i>
+        </button>
+
+        <ul id="menubar-list" class="menubar-list" :class="{open: menuOpen}">
+          <li v-for="item in items" :key="item.label">
+            <button
+                v-if="item.command"
+                type="button"
+                class="menu-item-link"
+                :class="item.class"
+                @click="item.command"
+            >
+              <span class="menu-item-content">
+                <i v-if="item.icon" :class="['icon', item.icon, 'menu-item-icon']" aria-hidden="true"></i>
+                <span v-if="item.label" class="menu-item-label">{{ item.label }}</span>
+              </span>
+            </button>
+            <router-link
+                v-else
+                :to="item.to"
+                class="menu-item-link"
+                :class="[item.class, {'router-link-active': isActive(item)}]"
+            >
+              <span class="menu-item-content">
+                <i v-if="item.icon" :class="['icon', item.icon, 'menu-item-icon']" aria-hidden="true"></i>
+                <span v-if="item.label" class="menu-item-label">{{ item.label }}</span>
+                <span v-if="item.badge" class="menu-badge" :aria-label="`${item.badge} unread`">{{ item.badge }}</span>
+              </span>
+            </router-link>
+          </li>
+        </ul>
+
+        <div class="menubar-end">
+          <div v-if="isLoggedId" class="end-content">
             <router-link to="/">
-              <Avatar class="image" :image="avatarUrl" shape="circle" />
+              <img class="avatar image" :src="avatarUrl" alt="Profile"/>
             </router-link>
           </div>
-          <div v-else class="flex items-center gap-2 big-icon-wrapper">
-            <router-link to="/login">
-              <i class="pi pi-sign-in big-icon"></i>
+          <div v-else class="end-content big-icon-wrapper">
+            <router-link to="/login" aria-label="Sign in">
+              <i class="icon icon-sign-in big-icon" aria-hidden="true"></i>
             </router-link>
           </div>
-        </template>
-      </Menubar>
+        </div>
+      </nav>
     </div>
   </header>
 </template>
 
 <style scoped>
 .main-menu {
+  position: relative;
+  z-index: 100; /* above the views, so the dropdown on narrow screens covers them */
   width: calc(100% - 60px);
   min-height: 80px;
   margin: 15px 30px 0;
@@ -141,44 +155,102 @@ const avatarUrl = computed(() => user.avatar || defaultAvatar);
   backdrop-filter: blur(10px);
 }
 
-.image {
-  margin-top: 5px;
-}
-
 .card {
   padding: 15px 20px;
 }
 
-:deep(.p-menubar) {
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
+.menubar {
+  display: flex;
+  align-items: center;
 }
 
-:deep(.p-menubar-root-list) {
+.menubar-start {
+  display: flex;
+  flex: 0 0 20%;
+  justify-content: center;
+  padding-right: 20px;
+}
+
+.menubar-list {
+  display: flex;
+  flex: 1;
+  justify-content: flex-start;
   gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-:deep(.p-menubar-item:not(.p-disabled) > .p-menubar-item-content:hover),
-:deep(.p-menubar-item:not(.p-disabled) > .p-menubar-item-content:hover .p-menubar-item-link) {
-  background: transparent !important;
-  box-shadow: none !important;
+.menubar-end {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.end-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.menubar-button {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+}
+
+.menubar-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.avatar {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--ui-surface-700);
+  transition: all 0.3s ease;
+}
+
+.avatar:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
+}
+
+.image {
+  margin-top: 5px;
 }
 
 .menu-item-link {
-  display: flex !important;
-  align-items: center !important;
-  padding: 12px 20px !important;
-  border-radius: 12px !important;
-  text-decoration: none !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #ffffff !important;
-  font-weight: 500 !important;
-  position: relative !important;
-  overflow: hidden !important;
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 12px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 500;
+  color: #ffffff;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  animation: slideIn 0.5s ease-out;
 }
 
 .menu-item-link:before {
@@ -197,17 +269,21 @@ const avatarUrl = computed(() => user.avatar || defaultAvatar);
 }
 
 .menu-item-link:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.menu-item-link:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
 }
 
 .menu-item-link.router-link-active,
 .menu-item-logout {
-  background: linear-gradient(135deg, #667eea, #764ba2) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-color: rgba(255, 255, 255, 0.3);
   box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4),
               0 2px 10px rgba(102, 126, 234, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .menu-item-content {
@@ -217,99 +293,51 @@ const avatarUrl = computed(() => user.avatar || defaultAvatar);
 }
 
 .menu-item-icon {
-  font-size: 1.1rem !important;
-  color: #ffffff !important;
-  transition: all 0.3s ease !important;
+  font-size: 1.1rem;
+  color: #ffffff;
+  transition: all 0.3s ease;
+  animation: pulse 2s infinite;
 }
 
 .menu-item-link:hover .menu-item-icon {
-  transform: scale(1.1) !important;
-  color: #fff !important;
+  transform: scale(1.1);
+  color: #fff;
+  animation: bounceIn 0.6s ease-in-out;
 }
 
 .menu-item-label {
-  font-size: 0.95rem !important;
-  font-weight: 600 !important;
-  color: #ffffff !important;
-  letter-spacing: 0.02em !important;
-}
-
-@media (max-width: 768px) {
-  .main-menu {
-    margin: 10px;
-    border-radius: 15px;
-  }
-
-  .menu-item-link {
-    padding: 10px 16px !important;
-  }
-
-  .menu-item-label {
-    font-size: 0.9rem !important;
-  }
-}
-
-:deep(.p-menubar-end) {
-  gap: 12px;
-}
-
-:deep(.p-inputtext) {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  border-radius: 10px !important;
-  color: #ffffff !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-:deep(.p-inputtext::placeholder) {
-  color: rgba(255, 255, 255, 0.6) !important;
-}
-
-:deep(.p-inputtext:focus) {
-  border-color: rgba(255, 255, 255, 0.4) !important;
-  box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.1) !important;
-}
-
-:deep(.p-avatar) {
-  border: 2px solid rgba(255, 255, 255, 0.3) !important;
-  transition: all 0.3s ease !important;
-}
-
-:deep(.p-avatar:hover) {
-  border-color: rgba(255, 255, 255, 0.5) !important;
-  transform: scale(1.05) !important;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.02em;
 }
 
 .menu-item-home.router-link-active {
-  background: linear-gradient(135deg, #4fc3f7, #29b6f6) !important;
+  background: linear-gradient(135deg, #4fc3f7, #29b6f6);
   box-shadow: 0 5px 15px rgba(79, 195, 247, 0.4),
               0 2px 10px rgba(79, 195, 247, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .menu-item-about.router-link-active {
-  background: linear-gradient(135deg, #81c784, #66bb6a) !important;
+  background: linear-gradient(135deg, #81c784, #66bb6a);
   box-shadow: 0 5px 15px rgba(129, 199, 132, 0.4),
               0 2px 10px rgba(129, 199, 132, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .menu-item-matches.router-link-active {
-  background: linear-gradient(135deg, #e57373, #ef5350) !important;
+  background: linear-gradient(135deg, #e57373, #ef5350);
   box-shadow: 0 5px 15px rgba(229, 115, 115, 0.4),
               0 2px 10px rgba(229, 115, 115, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .menu-item-messages.router-link-active {
-  background: linear-gradient(135deg, #ffb74d, #ffa726) !important;
+  background: linear-gradient(135deg, #ffb74d, #ffa726);
   box-shadow: 0 5px 15px rgba(255, 183, 77, 0.4),
               0 2px 10px rgba(255, 183, 77, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-}
-
-.menu-item-link {
-  animation: slideIn 0.5s ease-out;
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 @keyframes slideIn {
@@ -323,10 +351,6 @@ const avatarUrl = computed(() => user.avatar || defaultAvatar);
   }
 }
 
-.menu-item-icon {
-  animation: pulse 2s infinite;
-}
-
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -334,10 +358,6 @@ const avatarUrl = computed(() => user.avatar || defaultAvatar);
   50% {
     opacity: 0.8;
   }
-}
-
-.menu-item-link:hover .menu-item-icon {
-  animation: bounceIn 0.6s ease-in-out;
 }
 
 @keyframes bounceIn {
@@ -352,48 +372,78 @@ const avatarUrl = computed(() => user.avatar || defaultAvatar);
   }
 }
 
- :deep(.p-menubar) {
-   background: transparent !important;
-   border: none !important;
-   padding: 0 !important;
-   display: flex !important;
-   align-items: center !important;
- }
-
-:deep(.p-menubar-start) {
-  flex: 0 0 20% !important;
-  display: flex !important;
-  justify-content: center !important;
-  padding-right: 20px !important;
-}
-
-:deep(.p-menubar-root-list) {
-  flex: 1 !important;
-  gap: 10px !important;
-  justify-content: flex-start !important;
-}
-
-:deep(.p-menubar-end) {
-  flex: 0 0 auto !important;
-  gap: 12px !important;
-  margin-left: auto !important;
-}
-
-@media (max-width: 768px) {
-  :deep(.p-menubar-start) {
-    flex: 0 0 15% !important;
-    padding-right: 10px !important;
-  }
-}
 .big-icon-wrapper {
   width: 50px;
 }
+
 .big-icon {
   color: rgb(224, 45, 45);
-  font-size: 1.5rem !important;
+  font-size: 1.5rem;
 }
+
 .logo {
   height: 40px;
   width: auto;
+}
+
+.menu-badge {
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  color: #fff;
+  background: #ef5350;
+}
+
+@media (max-width: 960px) {
+  .menubar-button {
+    display: flex;
+  }
+
+  .menubar-list {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    display: none;
+    flex-direction: column;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 15px;
+    background: #2c3e50;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+
+  .menubar-list.open {
+    display: flex;
+  }
+
+  .menu-item-link {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-menu {
+    margin: 10px;
+    border-radius: 15px;
+  }
+
+  .menu-item-link {
+    padding: 10px 16px;
+  }
+
+  .menu-item-label {
+    font-size: 0.9rem;
+  }
+
+  .menubar-start {
+    flex: 0 0 15%;
+    padding-right: 10px;
+  }
 }
 </style>

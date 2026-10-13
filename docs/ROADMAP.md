@@ -3,7 +3,7 @@
 Übergabedokument für die weitere Umsetzung. **Neue Session: Diese Datei zuerst lesen, dann mit der nächsten offenen Phase weitermachen.**
 
 - Backend (dieses Repo): Spring Boot 4.1, Java 24 (Gradle Toolchain), Postgres + Flyway, Kafka, Apache Solr, MinIO
-- Frontend: `C:\Users\bjarn\WebstormProjects\dating-recommendations-fe` (Vue 3, Pinia, PrimeVue, Vite-Proxy `/api` → `localhost:8080`)
+- Frontend: `C:\Users\bjarn\WebstormProjects\dating-recommendations-fe` (Vue 3, Pinia, Vite-Proxy `/api` → `localhost:8080`)
 
 ## Ziel
 

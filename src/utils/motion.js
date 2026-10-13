@@ -35,12 +35,12 @@ export function shake(element) {
     ], {duration: 260});
 }
 
-/** Particles (PrimeIcons) flying outwards from a viewport point. */
-export function burst({x, y}, {icon = 'pi-heart-fill', color = '#ff4d79', count = 10, distance = 70, size = 16} = {}) {
+/** Particles (icon font classes) flying outwards from a viewport point. */
+export function burst({x, y}, {icon = 'icon-heart-fill', color = '#ff4d79', count = 10, distance = 70, size = 16} = {}) {
     if (prefersReducedMotion()) return;
     for (let i = 0; i < count; i++) {
         const particle = document.createElement('i');
-        particle.className = `pi ${icon}`;
+        particle.className = `icon ${icon}`;
         particle.setAttribute('aria-hidden', 'true');
         Object.assign(particle.style, {
             position: 'fixed', left: '0', top: '0', zIndex: '1100', pointerEvents: 'none',

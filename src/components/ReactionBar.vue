@@ -25,10 +25,10 @@ const hint = computed(() => message.value
     ?? (props.selectedName ? `Selected: ${props.selectedName}, tap again to view` : 'Tap or swipe a profile'))
 
 const actions = [
-  {type: ReactionType.PASS, label: 'Pass', icon: 'pi-times'},
-  {type: ReactionType.COMPLIMENT, label: 'Compliment', icon: 'pi-comment'},
-  {type: ReactionType.SUPER_LIKE, label: 'Super like', icon: 'pi-star-fill'},
-  {type: ReactionType.LIKE, label: 'Like', icon: 'pi-heart-fill'},
+  {type: ReactionType.PASS, label: 'Pass', icon: 'icon-times'},
+  {type: ReactionType.COMPLIMENT, label: 'Compliment', icon: 'icon-comment'},
+  {type: ReactionType.SUPER_LIKE, label: 'Super like', icon: 'icon-star-fill'},
+  {type: ReactionType.LIKE, label: 'Like', icon: 'icon-heart-fill'},
 ]
 
 function button(type) {
@@ -53,7 +53,7 @@ defineExpose({refuse, celebrate, button})
   <div class="reaction-bar" ref="root">
     <span class="reaction-hint" :class="{warn: message}" aria-live="polite">{{ hint }}</span>
     <button class="reaction-btn view" data-type="VIEW" title="View profile" @click="emit('open')">
-      <i class="pi pi-user" aria-hidden="true"></i>
+      <i class="icon icon-user" aria-hidden="true"></i>
       <span class="label">Profile</span>
     </button>
     <button
@@ -65,7 +65,7 @@ defineExpose({refuse, celebrate, button})
         :title="action.label"
         @click="emit('react', action.type)"
     >
-      <i :class="['pi', action.icon]" aria-hidden="true"></i>
+      <i :class="['icon', action.icon]" aria-hidden="true"></i>
       <span class="label">{{ action.label }}</span>
       <span v-if="Number.isFinite(remaining[action.type])" class="count">{{ remaining[action.type] }}</span>
     </button>

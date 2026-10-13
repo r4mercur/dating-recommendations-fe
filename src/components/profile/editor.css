@@ -131,17 +131,17 @@
     gap: 8px;
 }
 
-.catalog-editor .search > .pi {
+.catalog-editor .search > .icon {
     position: absolute;
     z-index: 1;
     color: rgba(235, 235, 235, .5);
 }
 
-.catalog-editor .search > .pi-search {
+.catalog-editor .search > .icon-search {
     left: 12px;
 }
 
-.catalog-editor .search > .pi-spinner {
+.catalog-editor .search > .icon-spinner {
     right: 12px;
 }
 

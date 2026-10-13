@@ -40,15 +40,15 @@ function isCommon(song) {
           @click="playable && emit('play', song)"
       >
         <img v-if="song.imageUrl" :src="song.imageUrl" :alt="`${song.album} cover`" class="cover" loading="lazy"/>
-        <span v-else class="cover placeholder"><i class="pi pi-headphones" aria-hidden="true"></i></span>
+        <span v-else class="cover placeholder"><i class="icon icon-headphones" aria-hidden="true"></i></span>
         <span class="text">
           <span class="name">{{ song.name }}</span>
           <span class="artists">{{ song.artists.join(', ') }}</span>
         </span>
         <span v-if="song.anthem" class="badge anthem">Profile song</span>
         <span v-if="isCommon(song)" class="badge common">In common</span>
-        <i v-if="playable" class="pi play-icon"
-           :class="song.spotifyTrackId === activeTrackId ? 'pi-volume-up' : 'pi-play'" aria-hidden="true"></i>
+        <i v-if="playable" class="icon play-icon"
+           :class="song.spotifyTrackId === activeTrackId ? 'icon-volume-up' : 'icon-play'" aria-hidden="true"></i>
       </component>
     </li>
   </ul>

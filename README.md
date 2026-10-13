@@ -1,6 +1,6 @@
 # dating-recommendations-fe
 
-Vue 3 frontend (Pinia, PrimeVue, Vite) for the dating-recommendations user service.
+Vue 3 frontend (Pinia, Vite) for the dating-recommendations user service.
 The roadmap for backend and frontend lives in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Setup

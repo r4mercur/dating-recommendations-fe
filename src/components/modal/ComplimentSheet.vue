@@ -102,7 +102,7 @@ function send() {
             </span>
             <span class="error" role="alert">{{ error }}</span>
             <button type="button" class="btn-ghost" @click="emit('cancel')">Cancel</button>
-            <button type="submit" class="btn-send"><i class="pi pi-send" aria-hidden="true"></i> Send</button>
+            <button type="submit" class="btn-send"><i class="icon icon-send" aria-hidden="true"></i> Send</button>
           </div>
         </form>
       </div>

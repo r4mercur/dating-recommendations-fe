@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from "vue-router";
+import {createRouter, createWebHistory} from "vue-router";
 
 import HomeView from "@/pages/HomeView.vue";
 import AboutView from "@/pages/AboutView.vue";
@@ -14,7 +14,7 @@ const routes = [
     { path: "/login", component: LoginForm },
     { path: "/registration", component: RegistrationForm },
     { path: '/matches', component: MatchesView, meta: { requiresAuth: true} },
-    { path: '/messages', component: ChatView, meta: { requiresAuth: true} },
+    { path: '/messages/:matchId?', name: 'messages', component: ChatView, meta: { requiresAuth: true} },
 ];
 
 export const router = createRouter({
@@ -22,12 +22,10 @@ export const router = createRouter({
     routes
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
     const userStore = useUserStore();
 
     if (to.meta.requiresAuth && !userStore.user) {
-        next('/login');
-    } else {
-        next();
+        return '/login';
     }
 })

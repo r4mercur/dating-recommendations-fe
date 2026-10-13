@@ -46,9 +46,9 @@ async function submit() {
 <template>
   <section class="info-card" :class="{editing}">
     <header class="section-header">
-      <h3><i v-if="icon" :class="['pi', icon]" aria-hidden="true"></i>{{ title }}</h3>
+      <h3><i v-if="icon" :class="['icon', icon]" aria-hidden="true"></i>{{ title }}</h3>
       <button v-if="save && !editing" class="section-edit" type="button" @click="startEdit">
-        <i class="pi pi-pencil" aria-hidden="true"></i> Edit
+        <i class="icon icon-pencil" aria-hidden="true"></i> Edit
       </button>
     </header>
 
@@ -58,7 +58,7 @@ async function submit() {
       <div class="section-actions">
         <button type="button" class="btn-ghost" @click="editing = false">Cancel</button>
         <button type="submit" class="btn-save" :disabled="saving">
-          <i v-if="saving" class="pi pi-spin pi-spinner" aria-hidden="true"></i> Save
+          <i v-if="saving" class="icon icon-spin icon-spinner" aria-hidden="true"></i> Save
         </button>
       </div>
     </form>

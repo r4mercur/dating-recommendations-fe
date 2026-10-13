@@ -2,68 +2,24 @@
 import {computed} from 'vue'
 import {useChatStore} from '@/stores/chat.js'
 import defaultAvatar from '@/assets/avatar.jpg'
+import {formatChatTime} from '@/utils/time.js'
 
 defineProps({
-  selectedChatId: {
-    type: [String, Number],
+  activeMatchId: {
+    type: String,
     default: null
   }
 })
 
-const emit = defineEmits(['chat-selected', 'new-chat'])
+const emit = defineEmits(['select'])
 
 const chatStore = useChatStore()
+const conversations = computed(() => chatStore.conversations)
 
-// mocking data
-const chats = computed(() => {
-  return chatStore.chats.length > 0 ? chatStore.chats : [
-    {
-      id: 1,
-      name: 'Sarah Weber',
-      avatar: defaultAvatar,
-      lastMessage: 'Hast du Lust auf einen Kaffee? ☕',
-      timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 min ago
-      unreadCount: 2,
-      isOnline: true
-    },
-    {
-      id: 2,
-      name: 'Julia Schmidt',
-      avatar: defaultAvatar,
-      lastMessage: 'Das war ein toller Abend! 😊',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      unreadCount: 0,
-      isOnline: false
-    },
-    {
-      id: 3,
-      name: 'Lisa Müller',
-      avatar: defaultAvatar,
-      lastMessage: 'Bis später! 👋',
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-      unreadCount: 1,
-      isOnline: true
-    }
-  ]
-})
-
-const selectChat = (chat) => {
-  emit('chat-selected', chat)
-}
-
-const createNewChat = () => {
-  emit('new-chat');
-}
-
-const formatTime = (timestamp) => {
-  const now = new Date()
-  const diff = now - timestamp
-
-  if (diff < 60 * 1000) return 'Jetzt'
-  if (diff < 60 * 60 * 1000) return `${Math.floor(diff / (60 * 1000))} min`
-  if (diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / (60 * 60 * 1000))} h`
-
-  return timestamp.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
+function preview(conversation) {
+  const message = conversation.lastMessage
+  if (!message) return 'New match. Say hi!'
+  return message.senderReferenceId === chatStore.myReferenceId ? `You: ${message.content}` : message.content
 }
 </script>
 
@@ -71,37 +27,48 @@ const formatTime = (timestamp) => {
   <div class="chat-menu">
     <div class="chat-menu-header">
       <h2>Chats</h2>
-      <button @click="createNewChat" class="new-chat-button">
-        <i class="pi pi-plus"></i>
-      </button>
+      <span v-if="!chatStore.connected && chatStore.loaded" class="offline" title="Reconnecting…">
+        <i class="icon icon-spin icon-spinner" aria-hidden="true"></i> Reconnecting
+      </span>
     </div>
 
-    <div class="chat-list">
-      <div
-        v-for="chat in chats"
-        :key="chat.id"
-        :class="['chat-item', { active: selectedChatId === chat.id }]"
-        @click="selectChat(chat)"
-      >
-        <div class="chat-avatar-container">
-          <img :src="chat.avatar" :alt="chat.name" class="chat-avatar" />
-          <div v-if="chat.isOnline" class="online-indicator"></div>
-        </div>
+    <p v-if="!chatStore.loaded" class="state"><i class="icon icon-spin icon-spinner" aria-hidden="true"></i> Loading chats…</p>
 
-        <div class="chat-content">
-          <div class="chat-header">
-            <h3 class="chat-name">{{ chat.name }}</h3>
-            <span class="chat-time">{{ formatTime(chat.timestamp) }}</span>
-          </div>
-          <div class="chat-preview">
-            <p class="last-message">{{ chat.lastMessage }}</p>
-            <div v-if="chat.unreadCount > 0" class="unread-badge">
-              {{ chat.unreadCount }}
-            </div>
-          </div>
-        </div>
-      </div>
+    <div v-else-if="!conversations.length" class="state empty">
+      <i class="icon icon-heart" aria-hidden="true"></i>
+      <p>No chats yet. When you match with someone, your chat shows up here.</p>
+      <router-link to="/matches" class="discover-link">Discover people</router-link>
     </div>
+
+    <ul v-else class="chat-list">
+      <li v-for="conversation in conversations" :key="conversation.matchReferenceId">
+        <button
+            type="button"
+            :class="['chat-item', {active: activeMatchId === conversation.matchReferenceId, unread: conversation.unreadCount > 0}]"
+            :aria-current="activeMatchId === conversation.matchReferenceId ? 'true' : undefined"
+            @click="emit('select', conversation.matchReferenceId)"
+        >
+          <span class="chat-avatar-container">
+            <img :src="conversation.user.photo || defaultAvatar" :alt="conversation.user.name" class="chat-avatar"/>
+            <span v-if="conversation.user.online" class="online-indicator" title="Online"></span>
+          </span>
+
+          <span class="chat-content">
+            <span class="chat-header">
+              <span class="chat-name">{{ conversation.user.name }}</span>
+              <span class="chat-time">
+                {{ formatChatTime(conversation.lastMessage?.createdAt ?? conversation.matchedAt) }}
+              </span>
+            </span>
+            <span class="chat-preview">
+              <span class="last-message" :class="{fresh: !conversation.lastMessage}">{{ preview(conversation) }}</span>
+              <span v-if="conversation.unreadCount > 0" class="unread-badge"
+                    :aria-label="`${conversation.unreadCount} unread`">{{ conversation.unreadCount }}</span>
+            </span>
+          </span>
+        </button>
+      </li>
+    </ul>
   </div>
 </template>
 
@@ -110,63 +77,90 @@ const formatTime = (timestamp) => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .chat-menu-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 0;
+  padding: 0 0 16px;
   border-bottom: 1px solid #34495e;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .chat-menu-header h2 {
   margin: 0;
   font-size: 24px;
   font-weight: 600;
-  color: rgba(235, 235, 235, 0.64);
+  color: rgba(235, 235, 235, 0.8);
 }
 
-.new-chat-button {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #34495e, #2c3e50);
-  border: 1px solid #34495e;
-  color: rgba(235, 235, 235, 0.64);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
+.offline {
+  font-size: 12px;
+  color: #fac775;
 }
 
-.new-chat-button:hover {
-  background: linear-gradient(135deg, #ffb74d, #ffa726);
-  border-color: #ffa726;
+.state {
+  margin: 0;
+  padding: 24px 8px;
+  text-align: center;
+  color: rgba(235, 235, 235, 0.55);
+}
+
+.state.empty i {
+  font-size: 32px;
+  color: rgba(235, 235, 235, 0.3);
+}
+
+.state.empty p {
+  margin: 12px 0 16px;
+  font-size: 14px;
+}
+
+.discover-link {
+  display: inline-block;
+  padding: 8px 18px;
+  border: 1px solid #ffa726;
+  border-radius: 18px;
+  color: #ffa726;
+  text-decoration: none;
 }
 
 .chat-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .chat-item {
   display: flex;
-  padding: 16px;
+  width: 100%;
+  padding: 12px;
   border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
   border: 1px solid transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+  transition: background-color .2s, border-color .2s;
 }
 
 .chat-item:hover {
   background: rgba(52, 73, 94, 0.3);
   border-color: #34495e;
+}
+
+.chat-item:focus-visible {
+  outline: 2px solid #ffa726;
+  outline-offset: 2px;
 }
 
 .chat-item.active {
@@ -176,10 +170,12 @@ const formatTime = (timestamp) => {
 
 .chat-avatar-container {
   position: relative;
+  flex-shrink: 0;
   margin-right: 12px;
 }
 
 .chat-avatar {
+  display: block;
   width: 50px;
   height: 50px;
   border-radius: 50%;
@@ -198,6 +194,9 @@ const formatTime = (timestamp) => {
 }
 
 .chat-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   flex: 1;
   min-width: 0;
 }
@@ -206,23 +205,23 @@ const formatTime = (timestamp) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 4px;
 }
 
 .chat-name {
   font-size: 16px;
   font-weight: 600;
-  margin: 0;
-  color: rgba(235, 235, 235, 0.64);
+  color: rgba(235, 235, 235, 0.85);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .chat-time {
+  flex-shrink: 0;
   font-size: 12px;
-  color: #656d76;
-  white-space: nowrap;
+  color: #8c959f;
 }
 
 .chat-preview {
@@ -232,24 +231,33 @@ const formatTime = (timestamp) => {
 }
 
 .last-message {
+  flex: 1;
   font-size: 14px;
-  color: #656d76;
-  margin: 0;
+  color: #8c959f;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
+}
+
+.last-message.fresh {
+  color: #ffcc80;
+}
+
+.chat-item.unread .last-message {
+  color: rgba(235, 235, 235, 0.9);
+  font-weight: 600;
 }
 
 .unread-badge {
-  background: #ef5350;
-  color: white;
-  border-radius: 12px;
+  flex-shrink: 0;
+  min-width: 20px;
+  margin-left: 8px;
   padding: 2px 8px;
+  border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
-  min-width: 20px;
   text-align: center;
-  margin-left: 8px;
+  color: white;
+  background: #ef5350;
 }
 </style>

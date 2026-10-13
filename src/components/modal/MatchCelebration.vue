@@ -36,9 +36,11 @@ watch(match, async (value) => {
   }, 520)
 })
 
+/** the match is the conversation, so its chat opens right away */
 function writeMessage() {
+  const matchId = match.value.referenceId
   reactionsStore.dismissMatch()
-  router.push('/messages')
+  router.push({name: 'messages', params: {matchId}})
 }
 </script>
 
@@ -49,7 +51,7 @@ function writeMessage() {
            @keydown.esc="reactionsStore.dismissMatch()">
         <div class="pair">
           <img :src="userStore.avatar || defaultAvatar" alt="You" class="avatar me"/>
-          <i ref="heart" class="pi pi-heart-fill heart" aria-hidden="true"></i>
+          <i ref="heart" class="icon icon-heart-fill heart" aria-hidden="true"></i>
           <img :src="match.user.photo || defaultAvatar" :alt="match.user.name" class="avatar them"/>
         </div>
 
