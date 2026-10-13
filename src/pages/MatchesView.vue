@@ -2,6 +2,7 @@
 import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import {useToast} from '@/composables/useToast.js'
 import ProfileTile from '@/components/ProfileTile.vue'
+import SwipeCard from '@/components/SwipeCard.vue'
 import ReactionBar from '@/components/ReactionBar.vue'
 import ComplimentSheet from '@/components/modal/ComplimentSheet.vue'
 import ProfileDetailSheet from '@/components/modal/ProfileDetailSheet.vue'
@@ -15,6 +16,7 @@ const reactionsStore = useReactionsStore()
 const tagsStore = useTagsStore()
 const toast = useToast()
 
+/** wraps the grid or the card stack, to find the element of a profile for the animations */
 const gridWrapper = ref(null)
 const sentinel = ref(null)
 const bar = ref(null)
@@ -25,6 +27,29 @@ const complimentDetails = ref(null)
 const detailFor = ref(null)
 const detailSheet = ref(null)
 const busy = ref(false)
+const topCard = ref(null)
+const container = ref(null)
+
+/** "cards": one detailed profile at a time, like a stack; "grid": all recommendations at once */
+const VIEW_KEY = 'discover-view'
+const view = ref(readView())
+
+function readView() {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'cards'
+  } catch {
+    return 'cards'
+  }
+}
+
+function setView(next) {
+  view.value = next
+  try {
+    localStorage.setItem(VIEW_KEY, next)
+  } catch {
+    // only a convenience, the view still switches
+  }
+}
 
 /** how each removed tile leaves the grid, read by the leave transition */
 const exits = new Map()
@@ -43,7 +68,12 @@ const EXIT = {
 }
 
 const profiles = computed(() => recommendationsStore.items)
-const selected = computed(() => profiles.value.find(profile => profile.referenceId === selectedId.value) ?? null)
+/** in the card stack the top card is always the one you react to */
+const selected = computed(() => view.value === 'cards'
+    ? profiles.value[0] ?? null
+    : profiles.value.find(profile => profile.referenceId === selectedId.value) ?? null)
+/** the top card and the one behind it */
+const stack = computed(() => profiles.value.slice(0, 2))
 /** reactions left today for types with a daily limit */
 const remaining = computed(() => Object.fromEntries(Object.values(ReactionType)
     .map(type => [type, reactionsStore.remaining(type)])
@@ -77,9 +107,15 @@ function react(type, {swiped = false} = {}) {
   }
   if (type === ReactionType.COMPLIMENT) {
     complimentFor.value = profile
+    // the card already loaded the full profile: shared songs and games make better suggestions
+    if (view.value === 'cards') complimentDetails.value = topCard.value?.details ?? null
     return
   }
   send(profile, type, null, swiped)
+}
+
+function onCardSwipe(direction) {
+  react(direction === 'right' ? ReactionType.LIKE : ReactionType.PASS, {swiped: true})
 }
 
 function onSwipe(profile, direction) {
@@ -171,7 +207,7 @@ function handleReactionError(error, profile, index, type) {
 /** Effects on the tile before it leaves. Swipes skip the waiting, the user already "threw" the tile. */
 async function playIntro(type, tile, {swiped, message}) {
   if (!tile || prefersReducedMotion()) return
-  const avatar = tile.querySelector('.tile-avatar') ?? tile
+  const avatar = tile.querySelector('.tile-avatar, .hero-photo') ?? tile
 
   if (type === ReactionType.LIKE) {
     tile.classList.add('flash-like')
@@ -254,6 +290,27 @@ function onKeydown(event) {
   react(type)
 }
 
+/**
+ * Card stack: the page is exactly as high as the window and does not scroll, only the card does.
+ * The height is what is left below the menu.
+ */
+const fitted = computed(() => view.value === 'cards' && !initialLoading.value && profiles.value.length > 0)
+
+function fit() {
+  const element = container.value
+  if (!element) return
+  element.style.height = fitted.value
+      ? `${Math.max(window.innerHeight - element.getBoundingClientRect().top, 0)}px`
+      : ''
+}
+
+watch(fitted, async (isFitted) => {
+  document.documentElement.style.overflow = isFitted ? 'hidden' : ''
+  if (isFitted) window.scrollTo(0, 0)
+  await nextTick()
+  fit()
+}, {immediate: true, flush: 'post'})
+
 // loads the next page shortly before the end of the grid is reached
 const observer = new IntersectionObserver(entries => {
   if (entries.some(entry => entry.isIntersecting)) recommendationsStore.loadMore()
@@ -271,16 +328,20 @@ onMounted(() => {
   reactionsStore.loadTypes()
   tagsStore.load()
   window.addEventListener('keydown', onKeydown)
+  window.addEventListener('resize', fit)
+  fit()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('resize', fit)
+  document.documentElement.style.overflow = ''
   observer.disconnect()
 })
 </script>
 
 <template>
-  <div class="matches-container">
+  <div ref="container" class="matches-container" :class="{fitted}">
     <div v-if="initialLoading" class="loading-container">
       <div class="loading-spinner">
         <i class="icon icon-spin icon-spinner"></i>
@@ -291,7 +352,21 @@ onBeforeUnmount(() => {
     <template v-else>
       <div class="matches-header">
         <h1>Discover</h1>
-        <p class="matches-subtitle">Swipe right to like, left to pass. Tap a selected profile to see more.</p>
+        <p class="matches-subtitle">
+          {{ view === 'cards'
+            ? 'Swipe right to like, left to pass. Scroll the card for the whole profile.'
+            : 'Swipe right to like, left to pass. Tap a selected profile to see more.' }}
+        </p>
+        <div class="view-switch" role="group" aria-label="Layout">
+          <button type="button" :class="{active: view === 'cards'}" :aria-pressed="view === 'cards'"
+                  @click="setView('cards')">
+            <i class="icon icon-id-card" aria-hidden="true"></i> Cards
+          </button>
+          <button type="button" :class="{active: view === 'grid'}" :aria-pressed="view === 'grid'"
+                  @click="setView('grid')">
+            <i class="icon icon-th-large" aria-hidden="true"></i> Grid
+          </button>
+        </div>
       </div>
 
       <div v-if="profiles.length === 0" class="no-matches">
@@ -301,6 +376,20 @@ onBeforeUnmount(() => {
         <h3>No more profiles right now</h3>
         <p>Expand your search criteria or come back later.</p>
         <button class="reload-btn" @click="recommendationsStore.load()">Reload</button>
+      </div>
+
+      <div v-else-if="view === 'cards'" ref="gridWrapper" class="card-stage">
+        <TransitionGroup tag="div" name="card" class="card-deck" @before-leave="onBeforeLeave" @leave="onLeave">
+          <SwipeCard
+              v-for="(profile, index) in stack"
+              :key="profile.referenceId"
+              :ref="el => { if (index === 0 && el) topCard = el }"
+              :profile="profile"
+              :active="index === 0"
+              :style="{zIndex: stack.length - index}"
+              @swipe="onCardSwipe"
+          />
+        </TransitionGroup>
       </div>
 
       <div v-else ref="gridWrapper">
@@ -322,13 +411,15 @@ onBeforeUnmount(() => {
           />
         </TransitionGroup>
       </div>
-      <div ref="sentinel" aria-hidden="true"></div>
+      <div v-if="view === 'grid'" ref="sentinel" aria-hidden="true"></div>
 
       <ReactionBar
           v-if="profiles.length"
           ref="bar"
           :selected-name="selected?.name ?? null"
           :remaining="remaining"
+          :hintText="view === 'cards' ? 'Swipe or use the buttons' : null"
+          :showProfileButton="view === 'grid'"
           @react="react"
           @open="openProfile()"
       />
@@ -348,6 +439,22 @@ onBeforeUnmount(() => {
   padding: 30px;
   min-height: calc(100vh - 60px);
   overflow-x: clip;
+}
+
+.matches-container.fitted {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.matches-container.fitted > .matches-header {
+  flex: none;
+}
+
+.matches-container.fitted > :deep(.reaction-bar) {
+  flex: none;
+  width: 100%;
 }
 
 .matches-header {
@@ -420,6 +527,67 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
+.view-switch {
+  display: inline-flex;
+  margin-top: 16px;
+  padding: 3px;
+  border: 1px solid #34495e;
+  border-radius: 20px;
+  background: #22313f;
+}
+
+.view-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border: none;
+  border-radius: 17px;
+  font: inherit;
+  font-size: 14px;
+  color: rgba(235, 235, 235, 0.7);
+  background: none;
+  cursor: pointer;
+}
+
+.view-switch button.active {
+  color: #2c3e50;
+  background: #ffa726;
+}
+
+.view-switch button:focus-visible {
+  outline: 2px solid #ffa726;
+  outline-offset: 2px;
+}
+
+.card-stage {
+  display: flex;
+  justify-content: center;
+}
+
+.fitted .card-stage {
+  flex: 1;
+  min-height: 0;
+}
+
+/* fits between header and reaction bar, with room for the card behind peeking out */
+.card-deck {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: clamp(420px, calc(100dvh - 400px), 760px);
+  margin-bottom: 18px;
+}
+
+.fitted .card-deck {
+  height: calc(100% - 18px);
+  max-height: 760px;
+}
+
+.card-deck .card-enter-from {
+  opacity: 0;
+}
+
 .matches-grid {
   position: relative;
   display: grid;
@@ -470,6 +638,35 @@ onBeforeUnmount(() => {
 @media (max-width: 768px) {
   .matches-container {
     padding: 20px;
+  }
+
+  /* phones: title and layout switch in one row, so the card gets the height */
+  .matches-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .matches-header h1 {
+    margin: 0;
+  }
+
+  .matches-subtitle {
+    display: none;
+  }
+
+  .view-switch {
+    margin-top: 0;
+  }
+
+  .card-deck {
+    height: clamp(380px, calc(100dvh - 300px), 760px);
+  }
+
+  .fitted .card-deck {
+    height: calc(100% - 18px);
   }
 
   .matches-header h1 {

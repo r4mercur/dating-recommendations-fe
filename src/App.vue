@@ -9,11 +9,12 @@ import {useChatStore} from "@/stores/chat.js";
 const userStore = useUserStore();
 const chatStore = useChatStore();
 
-// one real-time connection while logged in; a new token (login) reconnects, logout closes it
+// one real-time connection while logged in; logout closes it. Every new token (login, refresh) reconnects,
+// as the backend recommends: an open connection keeps the rights of the token it was opened with.
 // (login sets the token before the user is loaded, so both are watched)
 watch(() => [userStore.token, userStore.user?.referenceId], ([token, referenceId]) => {
   if (token && referenceId) {
-    chatStore.connect(token, referenceId);
+    chatStore.connect(() => userStore.freshToken(), referenceId);
   } else {
     chatStore.disconnect();
   }

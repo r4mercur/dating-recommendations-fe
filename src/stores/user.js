@@ -4,19 +4,39 @@ import {apiFetch} from "@/api.js";
 import {useRecommendationsStore} from "@/stores/recommendation.js";
 import {useReactionsStore} from "@/stores/reactions.js";
 
-/** Expiry of the persisted session: the token's `exp` claim, so the store never outlives the JWT. */
-function sessionExpiry(token) {
+const STORAGE_KEY = 'user';
+/** refresh this long before the access token expires, so no request runs into a 401 */
+const REFRESH_MARGIN_MS = 60 * 1000;
+
+/** `exp` claim of a JWT in milliseconds, null if there is none */
+function tokenExpiry(token) {
     try {
         const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
         const exp = JSON.parse(atob(payload)).exp;
-        if (exp) return exp * 1000;
-    } catch (e) {
-        // no or malformed token: fall through to the default
+        return exp ? exp * 1000 : null;
+    } catch {
+        return null;
     }
-    return Date.now() + 24 * 60 * 60 * 1000;
 }
 
-export const useUserStore = defineStore('user', {
+/** The persisted session lives as long as it can be refreshed; without refresh token as long as the JWT. */
+function sessionExpiry(state) {
+    return state.refreshExpiresAt ?? tokenExpiry(state.token) ?? Date.now() + 24 * 60 * 60 * 1000;
+}
+
+/** Session as another tab may have written it, read straight from the storage. */
+function readStoredSession() {
+    try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY))?.value ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/** the running refresh of this tab, so parallel 401s share one refresh */
+let refreshing = null;
+
+export const useUserStore = defineStore(STORAGE_KEY, {
     persist: {
         storage: {
             getItem: (key) => {
@@ -38,7 +58,7 @@ export const useUserStore = defineStore('user', {
                 const state = JSON.parse(value);
                 const payload = {
                     value: state,
-                    _expires: sessionExpiry(state.token)
+                    _expires: sessionExpiry(state)
                 };
                 localStorage.setItem(key, JSON.stringify(payload));
             },
@@ -49,6 +69,11 @@ export const useUserStore = defineStore('user', {
         return {
             user: null,
             token: null,
+            refreshToken: null,
+            /** access token expiry in ms */
+            accessExpiresAt: null,
+            /** refresh token expiry in ms, the end of the session */
+            refreshExpiresAt: null,
             avatar: null
         }
     },
@@ -66,9 +91,76 @@ export const useUserStore = defineStore('user', {
                 body: JSON.stringify(registration)
             });
         },
+        /** Stores the token pair of a login or refresh response. */
+        applyTokens({access_token, expires_in, refresh_token, refresh_expires_in}) {
+            const now = Date.now();
+            this.token = access_token;
+            this.accessExpiresAt = tokenExpiry(access_token) ?? (expires_in ? now + expires_in * 1000 : null);
+            this.refreshToken = refresh_token ?? null;
+            this.refreshExpiresAt = refresh_expires_in ? now + refresh_expires_in * 1000 : null;
+            // write through right away: another tab waiting for the lock must see the new refresh token
+            this.$persist?.();
+        },
+        /**
+         * Gets a new token pair. Refresh tokens rotate and a reused one revokes the whole session, so only one
+         * refresh may run at a time, across tabs too (Web Locks). A tab that waited takes over the tokens another
+         * tab just got instead of sending its outdated refresh token.
+         * @returns {Promise<boolean>} false if the session can't be refreshed (expired or revoked)
+         */
+        refreshSession() {
+            refreshing ??= this.runRefresh().finally(() => (refreshing = null));
+            return refreshing;
+        },
+        async runRefresh() {
+            const usedRefreshToken = this.refreshToken;
+            const refresh = async () => {
+                const stored = readStoredSession();
+                if (stored?.refreshToken && stored.refreshToken !== usedRefreshToken) {
+                    this.token = stored.token;
+                    this.accessExpiresAt = stored.accessExpiresAt;
+                    this.refreshToken = stored.refreshToken;
+                    this.refreshExpiresAt = stored.refreshExpiresAt;
+                    return true;
+                }
+                if (!usedRefreshToken) return false;
+                try {
+                    // plain fetch: apiFetch would try to refresh again on a 401
+                    const response = await fetch('/api/auth/refresh', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({refresh_token: usedRefreshToken})
+                    });
+                    if (!response.ok) return false;
+                    this.applyTokens(await response.json());
+                    return true;
+                } catch {
+                    return false;
+                }
+            };
+            return navigator.locks ? navigator.locks.request('session-refresh', refresh) : refresh();
+        },
+        /** The access token, refreshed first if it is about to expire. */
+        async freshToken() {
+            if (this.refreshToken && this.accessExpiresAt && this.accessExpiresAt - Date.now() < REFRESH_MARGIN_MS) {
+                await this.refreshSession();
+            }
+            return this.token;
+        },
         async logout() {
+            const refreshToken = this.refreshToken;
+            if (refreshToken) {
+                // revoke the session in the backend too; logging out locally works regardless
+                fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({refresh_token: refreshToken})
+                }).catch(() => {});
+            }
             this.user = null;
             this.token = null;
+            this.refreshToken = null;
+            this.accessExpiresAt = null;
+            this.refreshExpiresAt = null;
             this.avatar = null;
             useRecommendationsStore().reset();
             useReactionsStore().reset();
@@ -83,7 +175,7 @@ export const useUserStore = defineStore('user', {
                         password: password
                     })
                 });
-                this.token = tokenResponse.access_token;
+                this.applyTokens(tokenResponse);
 
                 const user = await apiFetch('/api/me');
                 this.setUser(user);
@@ -93,6 +185,7 @@ export const useUserStore = defineStore('user', {
             } catch (error) {
                 this.setUser(null);
                 this.token = null;
+                this.refreshToken = null;
                 throw error;
             }
         },

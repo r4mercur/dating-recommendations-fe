@@ -41,13 +41,19 @@ export const useChatStore = defineStore('chat', {
     },
     actions: {
         /** Connects once after login; reconnects on its own and catches up on everything missed meanwhile. */
-        connect(token, myReferenceId) {
+        /**
+         * @param getToken returns a valid access token (refreshed if needed); asked before every (re)connect,
+         *                 so an automatic reconnect after hours offline doesn't use an expired token
+         */
+        connect(getToken, myReferenceId) {
             this.myReferenceId = myReferenceId;
             if (client) client.deactivate();
             client = new Client({
                 brokerURL: brokerUrl(),
-                connectHeaders: {Authorization: `Bearer ${token}`},
                 reconnectDelay: 5000,
+                beforeConnect: async () => {
+                    client.connectHeaders = {Authorization: `Bearer ${await getToken()}`};
+                },
                 onConnect: () => {
                     this.connected = true;
                     client.subscribe('/user/queue/messages', frame => this.receiveMessage(JSON.parse(frame.body)));

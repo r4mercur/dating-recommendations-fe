@@ -13,6 +13,16 @@ const props = defineProps({
   remaining: {
     type: Object,
     default: () => ({})
+  },
+  /** replaces the selection hint, e.g. in the card stack where the top card is always the one */
+  hintText: {
+    type: String,
+    default: null
+  },
+  /** the "Profile" button opens the full profile; not needed where it is already shown */
+  showProfileButton: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -21,7 +31,7 @@ const emit = defineEmits(['react', 'open'])
 const root = ref(null)
 const message = ref(null)
 
-const hint = computed(() => message.value
+const hint = computed(() => message.value ?? props.hintText
     ?? (props.selectedName ? `Selected: ${props.selectedName}, tap again to view` : 'Tap or swipe a profile'))
 
 const actions = [
@@ -52,7 +62,7 @@ defineExpose({refuse, celebrate, button})
 <template>
   <div class="reaction-bar" ref="root">
     <span class="reaction-hint" :class="{warn: message}" aria-live="polite">{{ hint }}</span>
-    <button class="reaction-btn view" data-type="VIEW" title="View profile" @click="emit('open')">
+    <button v-if="showProfileButton" class="reaction-btn view" data-type="VIEW" title="View profile" @click="emit('open')">
       <i class="icon icon-user" aria-hidden="true"></i>
       <span class="label">Profile</span>
     </button>

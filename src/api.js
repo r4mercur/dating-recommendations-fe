@@ -1,24 +1,39 @@
 import {useUserStore} from "@/stores/user.js";
 
-/**
- * fetch wrapper for the user service: adds the bearer token, parses JSON and
- * turns problem responses (RFC 9457) into errors. A 401 with a token logs the user out.
- */
-export async function apiFetch(path, options = {}) {
-    const userStore = useUserStore();
-    const headers = new Headers(options.headers || {});
+/** the auth endpoints handle tokens themselves and must never trigger a refresh */
+const AUTH_PATH = '/api/auth/';
 
-    if (userStore.token) {
-        headers.set('Authorization', `Bearer ${userStore.token}`);
+function request(path, options, token) {
+    const headers = new Headers(options.headers || {});
+    if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
     }
     if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
         headers.set('Content-Type', 'application/json');
     }
+    return fetch(path, {...options, headers});
+}
 
-    const response = await fetch(path, {...options, headers});
+/**
+ * fetch wrapper for the user service: adds the bearer token, parses JSON and
+ * turns problem responses (RFC 9457) into errors.
+ * An access token about to expire is refreshed first. A 401 refreshes once and repeats the request;
+ * only if that fails the user is logged out.
+ */
+export async function apiFetch(path, options = {}) {
+    const userStore = useUserStore();
+    const isAuthCall = path.startsWith(AUTH_PATH);
 
-    if (response.status === 401 && userStore.token) {
-        await userStore.logout();
+    const token = isAuthCall ? null : await userStore.freshToken();
+    let response = await request(path, options, token);
+
+    if (response.status === 401 && token && !isAuthCall) {
+        if (await userStore.refreshSession()) {
+            response = await request(path, options, userStore.token);
+        }
+        if (response.status === 401) {
+            await userStore.logout();
+        }
     }
 
     if (!response.ok) {

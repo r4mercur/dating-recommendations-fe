@@ -6,14 +6,17 @@ import {ref} from 'vue';
  *
  * @param onSwipe called with 'left' or 'right' once the element is released beyond the threshold
  * @param onTap   called for a press without drag
+ * @param enabled returns false while the element must not be swiped (e.g. a card in the back of a stack)
+ * @param ignore  presses starting on these elements are left alone, so buttons and links inside keep working
  */
-export function useSwipe({onSwipe, onTap, threshold = 90}) {
+export function useSwipe({onSwipe, onTap, threshold = 90, enabled = () => true, ignore = null}) {
     const offset = ref(0);
     const dragging = ref(false);
     let start = null;
 
     function onPointerDown(event) {
-        if (event.button !== 0) return;
+        if (event.button !== 0 || !enabled()) return;
+        if (ignore && event.target.closest?.(ignore)) return;
         start = {x: event.clientX, y: event.clientY};
         // keep receiving moves when a fast swipe leaves the element right away
         event.currentTarget.setPointerCapture(event.pointerId);
